@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}مرشحو اختبار الجمعية{% endblock %}
+
+{% block content %}
+<div class="container mt-4" dir="rtl">
+    <h2 class="mb-4">مرشحو اختبار الجمعية</h2>
+
+    {% if nominations %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>اسم الطالب</th>
+                        <th>آخر جزء تم اختباره</th>
+                        <th>الجزء المراد اختباره</th>
+                        <th>درجة المعلم</th>
+                        <th>درجة الاختبار الداخلي</th>
+                        <th>درجة اختبار الجمعية</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in nominations %}
+                    <tr>
+                        <td>{{ item.nomination.student.full_name }}</td>
+                        <td><span class="badge bg-secondary">{{ item.nomination.get_last_tested_part_display }}</span></td>
+                        <td><span class="badge bg-success">{{ item.next_part }}</span></td>
+                        <td><span class="badge bg-info">{{ item.nomination.teacher_grade|floatformat:2 }}</span></td>
+                        <td><span class="badge bg-info">{{ item.nomination.internal_grade|floatformat:2 }}</span></td>
+                        <td>
+                            <input type="number"
+                                   name="association_grade_{{ item.nomination.id }}"
+                                   class="form-control"
+                                   placeholder="أدخل الدرجة"
+                                   min="0"
+                                   max="100"
+                                   step="0.5">
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-lg w-100 mt-3">
+            حفظ النتائج
+        </button>
+    </form>
+    {% else %}
+    <div class="alert alert-info">
+        لا يوجد مرشحون لاختبار الجمعية حالياً.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

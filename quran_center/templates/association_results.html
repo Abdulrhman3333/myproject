@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}نتائج اختبار الجمعية{% endblock %}
+
+{% block content %}
+<div class="container mt-4" dir="rtl">
+    <h2 class="mb-4">قائمة الطلاب المختبرين في الجمعية</h2>
+
+    {% if nominations %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>اسم الطالب</th>
+                    <th>آخر جزء تم اختباره</th>
+                    <th>الجزء المراد اختباره</th>
+                    <th>درجة المعلم</th>
+                    <th>درجة الاختبار الداخلي</th>
+                    <th>درجة اختبار الجمعية</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nomination in nominations %}
+                <tr>
+                    <td>{{ nomination.student.full_name }}</td>
+                    <td><span class="badge bg-secondary">{{ nomination.get_last_tested_part_display }}</span></td>
+                    <td><span class="badge bg-success">{{ nomination.get_next_part }}</span></td>
+                    <td><span class="badge bg-info">{{ nomination.teacher_grade|floatformat:2 }}</span></td>
+                    <td><span class="badge bg-info">{{ nomination.internal_grade|floatformat:2 }}</span></td>
+                    <td><span class="badge bg-primary">{{ nomination.association_grade|floatformat:2 }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">لا يوجد نتائج للاختبار حتى الآن.</div>
+    {% endif %}
+</div>
+{% endblock %}

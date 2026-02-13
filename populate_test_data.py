@@ -9,6 +9,12 @@ import django
 import sys
 from datetime import date
 
+# Fix Windows console encoding for Arabic text
+if sys.platform == 'win32':
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'strict')
+
 # Setup Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'myproject.settings')
 django.setup()
@@ -63,7 +69,7 @@ students_data = [
         'parent_identity': '1987654321',
         'grade': '5_pri',
         'birth_date': date(2014, 3, 15),
-        'last_tested_part': 'جزء عم',
+        'last_tested_part': '1',
         'previous_center': 'مسجد النور',
         'neighborhood': 'حي النهضة',
         'teacher': teacher1,
@@ -77,7 +83,7 @@ students_data = [
         'parent_identity': '1987654322',
         'grade': '3_med',
         'birth_date': date(2011, 7, 20),
-        'last_tested_part': 'جزء تبارك',
+        'last_tested_part': '3',
         'previous_center': '',
         'neighborhood': 'حي السلام',
         'teacher': teacher1,
@@ -91,7 +97,7 @@ students_data = [
         'parent_identity': '1987654323',
         'grade': '2_sec',
         'birth_date': date(2008, 11, 10),
-        'last_tested_part': 'جزء قد سمع',
+        'last_tested_part': '5',
         'previous_center': 'مسجد الهدى',
         'neighborhood': 'حي الروضة',
         'teacher': teacher2,
@@ -105,7 +111,7 @@ students_data = [
         'parent_identity': '1987654324',
         'grade': '1_pri',
         'birth_date': date(2018, 5, 25),
-        'last_tested_part': 'سورة الفاتحة',
+        'last_tested_part': '0',
         'previous_center': '',
         'neighborhood': 'حي الملك فهد',
         'teacher': teacher2,
@@ -119,7 +125,7 @@ students_data = [
         'parent_identity': '1987654325',
         'grade': '4_pri',
         'birth_date': date(2015, 9, 8),
-        'last_tested_part': 'جزء عم',
+        'last_tested_part': '2',
         'previous_center': '',
         'neighborhood': 'حي العزيزية',
         'teacher': teacher1,
@@ -133,7 +139,7 @@ students_data = [
         'parent_identity': '1987654326',
         'grade': '1_med',
         'birth_date': date(2012, 12, 3),
-        'last_tested_part': 'جزء عم كامل',
+        'last_tested_part': '8',
         'previous_center': 'مركز المدينة',
         'neighborhood': 'حي الفيصلية',
         'teacher': None,
@@ -147,7 +153,7 @@ students_data = [
         'parent_identity': '2987654321',
         'grade': '3_sec',
         'birth_date': date(2007, 2, 14),
-        'last_tested_part': 'جزء الذاريات',
+        'last_tested_part': '13',
         'previous_center': '',
         'neighborhood': 'حي النزهة',
         'teacher': teacher2,
@@ -161,7 +167,7 @@ students_data = [
         'parent_identity': '2987654322',
         'grade': '2_pri',
         'birth_date': date(2017, 6, 18),
-        'last_tested_part': 'السور القصيرة',
+        'last_tested_part': '0',
         'previous_center': '',
         'neighborhood': 'حي الخالدية',
         'teacher': teacher1,

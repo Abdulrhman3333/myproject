@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}لوحة تحكم المعلم{% endblock %}
+
+{% block content %}
+<div class="container mt-4" dir="rtl">
+    <h2 class="mb-4">لوحة تحكم المعلم</h2>
+    
+    <!-- إحصائيات عامة -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">إجمالي الطلاب</h5>
+                    <h2>{{ total_students }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- إحصائيات الحضور لكل طالب -->
+    <h3 class="mb-3">إحصائيات الحضور (كامل الفترة)</h3>
+    
+    {% if attendance_stats %}
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>اسم الطالب</th>
+                    <th>الصف</th>
+                    <th>إجمالي الأيام</th>
+                    <th>حاضر</th>
+                    <th>غائب</th>
+                    <th>مستأذن</th>
+                    <th>أيام الغياب</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student_id, stats in attendance_stats.items %}
+                <tr>
+                    <td>{{ stats.student.full_name }}</td>
+                    <td>{{ stats.student.get_grade_display }}</td>
+                    <td><span class="badge bg-secondary">{{ stats.total_days }}</span></td>
+                    <td><span class="badge bg-success">{{ stats.present }}</span></td>
+                    <td><span class="badge bg-danger">{{ stats.absent }}</span></td>
+                    <td><span class="badge bg-warning text-dark">{{ stats.excused }}</span></td>
+                    <td>
+                        {% if stats.absent_days %}
+                            <button type="button" class="btn btn-sm btn-outline-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#absenceModal{{ student_id }}">
+                                عرض التفاصيل ({{ stats.absent_days|length }})
+                            </button>
+                            
+                            <!-- Modal للأيام الغياب -->
+                            <div class="modal fade" id="absenceModal{{ student_id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">أيام غياب {{ stats.student.full_name }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <ul class="list-group">
+                                                {% for date in stats.absent_days %}
+                                                <li class="list-group-item">{{ date|date:"Y/m/d" }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">لا يوجد</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        لا توجد بيانات حضور لعرضها حالياً.
+    </div>
+    {% endif %}
+    
+</div>
+{% endblock %}

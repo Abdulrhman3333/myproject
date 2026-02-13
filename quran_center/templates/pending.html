@@ -8,6 +8,7 @@
                 <th>اسم الطالب</th>
                 <th>الصف</th>
                 <th>آخر جزء مختبر</th>
+                <th>تعيين المعلم</th>
                 <th>الإجراء</th>
             </tr>
         </thead>
@@ -16,18 +17,26 @@
             <tr>
                 <td>{{ student.full_name }}</td>
                 <td>{{ student.get_grade_display }}</td>
-                <td>{{ student.last_tested_part }}</td>
+                <td>{{ student.get_last_tested_part_display }}</td>
                 <td>
-                    <form method="post" style="display:inline;">
+                    <form method="post" style="display:inline;" id="form_{{ student.id }}">
                         {% csrf_token %}
                         <input type="hidden" name="student_id" value="{{ student.id }}">
-                        <button type="submit" class="btn btn-success btn-sm">قبول الطالب</button>
+                        <select name="teacher_id" class="form-select form-select-sm" style="width: 200px; display: inline-block;">
+                            <option value="">-- اختر المعلم --</option>
+                            {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.username }}</option>
+                            {% endfor %}
+                        </select>
+                </td>
+                <td>
+                        <button type="submit" class="btn btn-success btn-sm">قبول وتعيين</button>
                     </form>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="4" class="text-center">لا يوجد طلاب في قائمة الانتظار حالياً.</td>
+                <td colspan="5" class="text-center">لا يوجد طلاب في قائمة الانتظار حالياً.</td>
             </tr>
             {% endfor %}
         </tbody>

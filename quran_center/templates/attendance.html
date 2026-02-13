@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load role_tags %}
 {% block title %}التحضير اليومي{% endblock %}
 
 {% block content %}
@@ -8,6 +9,28 @@
     {% if students %}
     <form method="post">
         {% csrf_token %}
+        
+        <!-- اختيار التاريخ -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5>معلومات التحضير</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">التاريخ:</label>
+                        <input type="date" name="attendance_date" class="form-control" value="{{ selected_date|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="col-md-8 d-flex align-items-end">
+                        <div class="alert alert-secondary w-100 mb-0">
+                            اليوم: <strong>{{ current_weekday }}</strong> | الأسبوع: <strong>{{ current_week }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- جدول الطلاب -->
         <table class="table table-bordered table-striped">
             <thead class="table-dark">
                 <tr>
@@ -20,11 +43,14 @@
                 <tr>
                     <td>{{ student.full_name }}</td>
                     <td>
-                        <input type="hidden" name="status_{{ student.id }}" id="input_{{ student.id }}" value="حاضر">
-                        
-                        <button type="button" class="btn btn-primary" 
-                                onclick="toggleStatus('{{ student.id }}')" 
-                                id="btn_{{ student.id }}">حاضر</button>
+                    {% with status=attendance_map|dict_get:student.id %}
+                    <input type="hidden" name="status_{{ student.id }}" id="input_{{ student.id }}" value="{{ status|default:'حاضر' }}">
+
+                    <button type="button"
+                        class="btn {% if status == 'غائب' %}btn-danger{% elif status == 'مستأذن' %}btn-warning{% elif status == 'متأخر' %}btn-secondary{% else %}btn-primary{% endif %}"
+                        onclick="toggleStatus('{{ student.id }}')"
+                        id="btn_{{ student.id }}">{{ status|default:'حاضر' }}</button>
+                    {% endwith %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -52,6 +78,10 @@ function toggleStatus(id) {
         input.value = 'مستأذن';
         btn.innerText = 'مستأذن';
         btn.className = 'btn btn-warning';
+    } else if (input.value === 'مستأذن') {
+        input.value = 'متأخر';
+        btn.innerText = 'متأخر';
+        btn.className = 'btn btn-secondary';
     } else {
         input.value = 'حاضر';
         btn.innerText = 'حاضر';
