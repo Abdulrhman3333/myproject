@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}تم حفظ التحضير{% endblock %}
+
+{% block content %}
+<div class="container mt-5" dir="rtl">
+    <div class="card shadow text-center">
+        <div class="card-header bg-success text-white">
+            <h3>✅ تم حفظ التحضير بنجاح!</h3>
+        </div>
+        <div class="card-body">
+            <p class="lead">تم حفظ تحضير الطلاب لهذا اليوم.</p>
+            <a href="{% url 'take_attendance' %}" class="btn btn-primary mt-3">العودة للتحضير</a>
+            <a href="{% url 'home' %}" class="btn btn-secondary mt-3">الصفحة الرئيسية</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

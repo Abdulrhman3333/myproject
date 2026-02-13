@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}تسجيل دخول المعلمين{% endblock %}
+
+{% block content %}
+<div class="container mt-5" dir="rtl">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4>تسجيل دخول المعلمين</h4>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            اسم المستخدم أو كلمة المرور غير صحيحة.
+                        </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">اسم المستخدم</label>
+                            <input type="text" name="username" class="form-control" id="id_username" required autofocus>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_password" class="form-label">كلمة المرور</label>
+                            <input type="password" name="password" class="form-control" id="id_password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">تسجيل الدخول</button>
+                        <input type="hidden" name="next" value="{{ next }}">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

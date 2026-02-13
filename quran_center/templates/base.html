@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <title>{% block title %}موقع حلقات القرآن{% endblock %}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark mb-4">
+    <div class="container">
+        <span class="navbar-brand">موقع حلقات القرآن</span>
+        <div>
+            {% if user.is_authenticated %}
+                <span class="text-white me-3">مرحباً، {{ user.username }}</span>
+                <a href="{% url 'pending_students' %}" class="btn btn-outline-light btn-sm me-2">الطلاب المنتظرين</a>
+                <a href="{% url 'take_attendance' %}" class="btn btn-outline-light btn-sm me-2">التحضير</a>
+                {% if user.is_superuser %}
+                <a href="{% url 'admin:index' %}" class="btn btn-outline-warning btn-sm me-2">لوحة التحكم</a>
+                {% endif %}
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">تسجيل الخروج</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline-light">تسجيل دخول المعلمين</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
