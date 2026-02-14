@@ -151,6 +151,42 @@ def success_view(request):
 def attendance_success_view(request):
     return render(request, 'attendance_success.html')
 
+def welcome_view(request):
+    return render(request, 'welcome.html')
+
+def parent_inquiry(request):
+    error_message = None
+    if request.method == 'POST':
+        parent_phone = request.POST.get('parent_phone', '').strip()
+        if not parent_phone:
+            error_message = "يرجى إدخال رقم الجوال"
+        else:
+            students = Student.objects.filter(parent_phone=parent_phone).select_related('teacher')
+
+            for student in students:
+                attendances = Attendance.objects.filter(student=student).order_by('-date')
+                student.present_count = attendances.filter(status='حاضر').count()
+                student.absent_count = attendances.filter(status='غائب').count()
+                student.excused_count = attendances.filter(status='مستأذن').count()
+                student.late_count = attendances.filter(status='متأخر').count()
+                student.recent_attendance = attendances[:10]
+
+                teacher_phone = None
+                if student.teacher and hasattr(student.teacher, 'teacher_profile'):
+                    teacher_phone = student.teacher.teacher_profile.phone
+                student.teacher_phone = teacher_phone
+
+            return render(
+                request,
+                'parent_inquiry_results.html',
+                {
+                    'students': students,
+                    'parent_phone': parent_phone,
+                }
+            )
+
+    return render(request, 'parent_inquiry.html', {'error_message': error_message})
+
 # دالة للتحقق من أن المستخدم ليس معلماً أو مشرفاً (للصفحة العامة فقط)
 def home(request):
     """الصفحة الرئيسية - نموذج التسجيل العام"""

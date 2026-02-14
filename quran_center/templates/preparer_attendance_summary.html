@@ -2,9 +2,14 @@
 {% block title %}تحضير المعلمين{% endblock %}
 
 {% block content %}
-<div class="container mt-4" dir="rtl">
-    <h2 class="mb-3">تحضير المعلمين لليوم</h2>
-    <div class="alert alert-secondary">التاريخ: {{ target_date|date:"Y/m/d" }}</div>
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1 class="page-hero-title">تحضير المعلمين</h1>
+        <p class="page-hero-subtitle">ملخص تحضير اليوم - التاريخ {{ target_date|date:"Y/m/d" }}</p>
+    </div>
+</div>
+
+<div class="container" dir="rtl">
 
     {% if completed %}
     <div class="table-responsive">

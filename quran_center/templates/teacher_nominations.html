@@ -2,8 +2,14 @@
 {% block title %}مرشحو المعلم{% endblock %}
 
 {% block content %}
-<div class="container mt-4" dir="rtl">
-    <h2 class="mb-4">الطلاب المرشحون</h2>
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1 class="page-hero-title">الطلاب المرشحون</h1>
+        <p class="page-hero-subtitle">متابعة الترشيحات الحالية ودرجات الطلاب</p>
+    </div>
+</div>
+
+<div class="container" dir="rtl">
 
     {% if nominations %}
     <div class="table-responsive">

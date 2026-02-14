@@ -2,8 +2,14 @@
 {% block title %}نتائج اختبار الجمعية{% endblock %}
 
 {% block content %}
-<div class="container mt-4" dir="rtl">
-    <h2 class="mb-4">قائمة الطلاب المختبرين في الجمعية</h2>
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1 class="page-hero-title">نتائج اختبار الجمعية</h1>
+        <p class="page-hero-subtitle">عرض درجات الطلاب المختبرين في الجمعية</p>
+    </div>
+</div>
+
+<div class="container" dir="rtl">
 
     {% if nominations %}
     <div class="table-responsive">

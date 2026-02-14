@@ -54,8 +54,8 @@ class UserRole(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.role.name}"
 
-# تعريف قاعدة: يجب أن يكون الرقم 10 خانات ويبدأ بـ 1 أو 2
-id_validator = RegexValidator(regex=r'^[12]\d{9}$', message="رقم الهوية غير صحيح")
+# تعريف قاعدة: يجب أن يكون الرقم 10 خانات
+id_validator = RegexValidator(regex=r'^\d{10}$', message="رقم الهوية غير صحيح")
 
 # نموذج مشرف المرحلة
 class StageSupervisor(models.Model):
@@ -105,6 +105,7 @@ class Student(models.Model):
     student_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="جوال الطالب")
     parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر", blank=True, default="")
     identity_number = models.CharField(max_length=100, verbose_name="رقم الهوية", blank=True, null=True)
+    jamiaa_id = models.CharField(max_length=100, verbose_name="رقم الجمعية", blank=True, null=True)
     parent_identity = models.CharField(max_length=50, verbose_name="رقم هوية ولي الأمر", blank=True, null=True)
     grade = models.CharField(max_length=20, choices=GRADE_CHOICES, verbose_name="الصف الدراسي", blank=True, default="")
     birth_date = models.DateField(verbose_name="تاريخ الميلاد", blank=True, null=True)
@@ -274,3 +275,16 @@ class ExamNomination(models.Model):
             return '30'  # القرآن كاملاً
         except ValueError:
             return '1'
+
+
+class TeacherProfile(models.Model):
+    """ملف تعريفي للمعلم يحتوي على معلومات إضافية"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="المستخدم", related_name='teacher_profile')
+    phone = models.CharField(max_length=15, verbose_name="رقم الجوال", blank=True, null=True)
+    
+    class Meta:
+        verbose_name = "ملف المعلم"
+        verbose_name_plural = "ملفات المعلمين"
+    
+    def __str__(self):
+        return f"ملف {self.user.username}"
