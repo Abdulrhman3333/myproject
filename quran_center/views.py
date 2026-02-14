@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from .forms import StudentRegistrationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Student, Attendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole
+from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
@@ -30,13 +30,18 @@ def pending_students(request):
         return redirect('home')
     
     # جلب الطلاب حسب مرحلة المشرف
-    if request.user.is_superuser or user_has_role(request.user, 'supervisor'):
-        # المدير أو المشرف العام يرى جميع الطلاب
+    if request.user.is_superuser:
+        # المدير يرى جميع الطلاب
         students = Student.objects.filter(status='منتظر')
-    else:
-        # المشرف يرى فقط طلاب مرحلته
+    elif hasattr(request.user, 'stage_supervisor'):
+        # مشرف المرحلة يرى فقط طلاب مرحلته
         supervisor = request.user.stage_supervisor
         students = Student.objects.filter(status='منتظر', educational_stage=supervisor.stage)
+    elif user_has_role(request.user, 'supervisor'):
+        # المشرف العام يرى جميع الطلاب
+        students = Student.objects.filter(status='منتظر')
+    else:
+        students = Student.objects.none()
     
     # جلب جميع المعلمين لقائمة التعيين (المعلمين الحاليين + الموظفين)
     teachers = User.objects.filter(
@@ -87,6 +92,7 @@ def take_attendance(request):
     # الحصول على رقم الأسبوع من التقويم
     current_week = AcademicCalendar.get_week_from_date(selected_date)
     
+    success = False
     if request.method == 'POST':
         posted_date_str = request.POST.get('attendance_date', str(selected_date))
         try:
@@ -109,18 +115,32 @@ def take_attendance(request):
                         'week_number': selected_week
                     }
                 )
-        return redirect('attendance_success')
+        # بدل redirect، نعيد تحميل البيانات وإظهار رسالة نجاح
+        success = True
+        selected_date = posted_date
+        current_weekday = selected_weekday
+        current_week = selected_week
 
     existing_attendance = Attendance.objects.filter(student__in=students, date=selected_date)
     attendance_map = {item.student_id: item.status for item in existing_attendance}
     
+    # إضافة حالة لكل طالب (حاضر افتراضياً إذا لم يكن له سجل)
+    students_with_status = []
+    for student in students:
+        status = attendance_map.get(student.id, 'حاضر')
+        students_with_status.append({
+            'student': student,
+            'status': status
+        })
+    
     context = {
-        'students': students,
+        'students_with_status': students_with_status,
         'current_weekday': current_weekday,
         'current_week': current_week,
         'selected_date': selected_date,
         'today': today,
         'attendance_map': attendance_map,
+        'success': success,
     }
     
     return render(request, 'attendance.html', context)
@@ -173,6 +193,13 @@ def teacher_dashboard(request):
         present = attendances.filter(status='حاضر').count()
         absent = attendances.filter(status='غائب').count()
         excused = attendances.filter(status='مستأذن').count()
+        late = attendances.filter(status='متأخر').count()
+        
+        # عدد الأيام غير الحاضر (غياب + استئذان + تأخير)
+        non_present_count = absent + excused + late
+        
+        # جميع الحضور مع الحالة
+        all_attendance = list(attendances.values('date', 'status').order_by('-date'))
         
         attendance_stats[student.id] = {
             'student': student,
@@ -180,7 +207,9 @@ def teacher_dashboard(request):
             'present': present,
             'absent': absent,
             'excused': excused,
-            'absent_days': list(attendances.filter(status='غائب').values_list('date', flat=True))
+            'late': late,
+            'non_present_count': non_present_count,
+            'all_attendance': all_attendance
         }
     
     context = {
@@ -191,10 +220,49 @@ def teacher_dashboard(request):
     return render(request, 'teacher_dashboard.html', context)
 
 @login_required
+def update_attendance(request):
+    """تحديث حالة الحضور من لوحة تحكم المعلم"""
+    if request.method == 'POST':
+        from datetime import datetime
+        
+        # جلب جميع البيانات المرسلة
+        for key, value in request.POST.items():
+            if key.startswith('status_'):
+                # استخراج التاريخ والـ student_id
+                # الصيغة: status_YYYY-MM-DD_student_id
+                try:
+                    # إزالة البادئة 'status_'
+                    rest = key.replace('status_', '')
+                    # فصل بآخر underscore لأن التاريخ قد يحتوي على شرطات
+                    last_underscore = rest.rfind('_')
+                    date_str = rest[:last_underscore]
+                    student_id = rest[last_underscore+1:]
+                    
+                    attendance_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    student = Student.objects.get(id=student_id, teacher=request.user)
+                    
+                    # تحديث حالة الحضور
+                    attendance = Attendance.objects.filter(
+                        student=student,
+                        date=attendance_date
+                    ).first()
+                    
+                    if attendance:
+                        attendance.status = value
+                        attendance.save()
+                except (Student.DoesNotExist, ValueError):
+                    pass
+    
+    return redirect('teacher_dashboard')
+
+@login_required
 def nominate_for_exam(request):
     """صفحة ترشيح الطلاب للاختبار الداخلي"""
     # جلب طلاب المعلم
     students = Student.objects.filter(teacher=request.user, status='منتظم')
+
+    existing_nominations = ExamNomination.objects.filter(teacher=request.user)
+    nomination_map = {item.student_id: item.id for item in existing_nominations}
     
     if request.method == 'POST':
         for student in students:
@@ -206,9 +274,55 @@ def nominate_for_exam(request):
                     last_tested_part=student.last_tested_part,
                     teacher_grade=teacher_grade
                 )
-        return redirect('teacher_dashboard')
+        return redirect('teacher_nominations')
     
-    return render(request, 'nominate_exam.html', {'students': students})
+    return render(request, 'nominate_exam.html', {
+        'students': students,
+        'nomination_map': nomination_map,
+    })
+
+
+@login_required
+def delete_nomination(request, nomination_id):
+    """حذف ترشيح طالب من الاختبار"""
+    nomination = get_object_or_404(ExamNomination, id=nomination_id, teacher=request.user)
+    if request.method == 'POST':
+        nomination.delete()
+    next_url = request.POST.get('next') or 'teacher_nominations'
+    return redirect(next_url)
+
+
+@login_required
+def delete_pending_student(request, student_id):
+    """حذف طالب من قائمة المنتظرين"""
+    if not is_stage_supervisor(request.user):
+        return redirect('home')
+
+    student = get_object_or_404(Student, id=student_id, status='منتظر')
+
+    if not request.user.is_superuser and hasattr(request.user, 'stage_supervisor'):
+        supervisor = request.user.stage_supervisor
+        if student.educational_stage != supervisor.stage:
+            return redirect('pending_students')
+
+    if request.method == 'POST':
+        student.delete()
+    return redirect('pending_students')
+
+
+@login_required
+def teacher_nominations(request):
+    """عرض الطلاب المرشحين من قبل المعلم"""
+    nominations = ExamNomination.objects.filter(teacher=request.user).order_by('-id')
+
+    nominations_with_next = []
+    for nomination in nominations:
+        nominations_with_next.append({
+            'nomination': nomination,
+            'next_part': nomination.get_next_part()
+        })
+
+    return render(request, 'teacher_nominations.html', {'nominations': nominations_with_next})
 
 @login_required
 def nominated_students(request):
@@ -305,6 +419,85 @@ def preparer_attendance_summary(request):
         'completed': completed,
     }
     return render(request, 'preparer_attendance_summary.html', context)
+
+
+@login_required
+def preparer_take_attendance(request):
+    """تحضير المعلمين - للمحضّر فقط"""
+    if not user_has_role(request.user, 'preparer') and not request.user.is_superuser:
+        return redirect('home')
+
+    teachers = User.objects.filter(student__isnull=False).distinct().order_by('username')
+
+    today = timezone.now().date()
+    selected_date_str = request.POST.get('attendance_date') or request.GET.get('date') or str(today)
+    try:
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        selected_date = today
+
+    weekday_map = {
+        6: 'الأحد',
+        0: 'الاثنين',
+        1: 'الثلاثاء',
+        2: 'الأربعاء',
+        3: 'الخميس',
+    }
+    current_weekday = weekday_map.get(selected_date.weekday(), 'الأحد')
+    current_week = AcademicCalendar.get_week_from_date(selected_date)
+
+    success = False
+    if request.method == 'POST':
+        posted_date_str = request.POST.get('attendance_date', str(selected_date))
+        try:
+            posted_date = datetime.strptime(posted_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            posted_date = selected_date
+
+        selected_weekday = weekday_map.get(posted_date.weekday(), 'الأحد')
+        selected_week = AcademicCalendar.get_week_from_date(posted_date)
+
+        for teacher in teachers:
+            status = request.POST.get(f'status_{teacher.id}')
+            if status:
+                TeacherAttendance.objects.update_or_create(
+                    teacher=teacher,
+                    date=posted_date,
+                    defaults={
+                        'status': status,
+                        'weekday': selected_weekday,
+                        'week_number': selected_week
+                    }
+                )
+
+        success = True
+        selected_date = posted_date
+        current_weekday = selected_weekday
+        current_week = selected_week
+
+    existing_attendance = TeacherAttendance.objects.filter(teacher__in=teachers, date=selected_date)
+    attendance_map = {item.teacher_id: item.status for item in existing_attendance}
+
+    teachers_with_status = []
+    for teacher in teachers:
+        status = attendance_map.get(teacher.id, 'حاضر')
+        display_name = teacher.get_full_name() or teacher.username
+        teachers_with_status.append({
+            'teacher': teacher,
+            'display_name': display_name,
+            'status': status,
+        })
+
+    context = {
+        'teachers_with_status': teachers_with_status,
+        'current_weekday': current_weekday,
+        'current_week': current_week,
+        'selected_date': selected_date,
+        'today': today,
+        'success': success,
+    }
+
+    return render(request, 'preparer_take_attendance.html', context)
 
 
 @login_required

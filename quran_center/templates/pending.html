@@ -8,6 +8,8 @@
                 <th>اسم الطالب</th>
                 <th>الصف</th>
                 <th>آخر جزء مختبر</th>
+                <th>جوال ولي الأمر</th>
+                <th>جوال الطالب</th>
                 <th>تعيين المعلم</th>
                 <th>الإجراء</th>
             </tr>
@@ -18,6 +20,8 @@
                 <td>{{ student.full_name }}</td>
                 <td>{{ student.get_grade_display }}</td>
                 <td>{{ student.get_last_tested_part_display }}</td>
+                <td>{{ student.parent_phone|default:"-" }}</td>
+                <td>{{ student.student_phone|default:"-" }}</td>
                 <td>
                     <form method="post" style="display:inline;" id="form_{{ student.id }}">
                         {% csrf_token %}
@@ -32,11 +36,15 @@
                 <td>
                         <button type="submit" class="btn btn-success btn-sm">قبول وتعيين</button>
                     </form>
+                    <form method="post" action="{% url 'delete_pending_student' student.id %}" onsubmit="return confirm('هل تريد حذف هذا الطالب من قائمة الانتظار؟');" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm">حذف</button>
+                    </form>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5" class="text-center">لا يوجد طلاب في قائمة الانتظار حالياً.</td>
+                <td colspan="7" class="text-center">لا يوجد طلاب في قائمة الانتظار حالياً.</td>
             </tr>
             {% endfor %}
         </tbody>

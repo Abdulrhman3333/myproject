@@ -1,0 +1,2 @@
+username,first_name,last_name,email,password,is_staff,is_active,role_codes
+"teacher_ahmed",Ahmed,Alothman,ahmed@example.com,teacher123,1,1,

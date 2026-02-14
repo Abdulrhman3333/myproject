@@ -101,13 +101,13 @@ class Student(models.Model):
     STATUS_CHOICES = [('منتظر', 'منتظر'), ('منتظم', 'منتظم')]
 
     # البيانات المطلوبة
-    full_name = models.CharField(max_length=200, verbose_name="الاسم الثلاثي")
+    full_name = models.CharField(max_length=200, verbose_name="الاسم الثلاثي", blank=True, default="")
     student_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="جوال الطالب")
-    parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر")
-    identity_number = models.CharField(max_length=10, unique=True, verbose_name="رقم الهوية")
-    parent_identity = models.CharField(max_length=10, verbose_name="رقم هوية ولي الأمر")
-    grade = models.CharField(max_length=20, choices=GRADE_CHOICES, verbose_name="الصف الدراسي")
-    birth_date = models.DateField(verbose_name="تاريخ الميلاد")
+    parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر", blank=True, default="")
+    identity_number = models.CharField(max_length=100, verbose_name="رقم الهوية", blank=True, null=True)
+    parent_identity = models.CharField(max_length=50, verbose_name="رقم هوية ولي الأمر", blank=True, null=True)
+    grade = models.CharField(max_length=20, choices=GRADE_CHOICES, verbose_name="الصف الدراسي", blank=True, default="")
+    birth_date = models.DateField(verbose_name="تاريخ الميلاد", blank=True, null=True)
     last_tested_part = models.CharField(
         max_length=50,
         choices=LAST_TESTED_PART_CHOICES,
@@ -115,7 +115,7 @@ class Student(models.Model):
         verbose_name="آخر جزء تم اختباره"
     )
     previous_center = models.CharField(max_length=100, blank=True, null=True, verbose_name="التحفيظ السابق")
-    neighborhood = models.CharField(max_length=100, verbose_name="الحي")
+    neighborhood = models.CharField(max_length=100, verbose_name="الحي", blank=True, null=True)
     
     # حقول تلقائية
     teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="المعلم المسؤول")
@@ -204,6 +204,39 @@ class Attendance(models.Model):
 
     def __str__(self):
         return f"{self.student.full_name} - {self.weekday} الأسبوع {self.week_number} - {self.status}"
+
+
+class TeacherAttendance(models.Model):
+    WEEKDAY_CHOICES = [
+        ('الأحد', 'الأحد'),
+        ('الاثنين', 'الاثنين'),
+        ('الثلاثاء', 'الثلاثاء'),
+        ('الأربعاء', 'الأربعاء'),
+        ('الخميس', 'الخميس'),
+    ]
+
+    STATUS_CHOICES = [
+        ('حاضر', 'حاضر'),
+        ('غائب', 'غائب'),
+        ('مستأذن', 'مستأذن'),
+        ('متأخر', 'متأخر'),
+    ]
+
+    teacher = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="المعلم")
+    date = models.DateField(verbose_name="التاريخ")
+    weekday = models.CharField(max_length=10, choices=WEEKDAY_CHOICES, verbose_name="اليوم")
+    week_number = models.IntegerField(verbose_name="رقم الأسبوع")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='حاضر', verbose_name="الحالة")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('teacher', 'date')
+        verbose_name = "حضور معلم"
+        verbose_name_plural = "سجلات حضور المعلمين"
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.teacher.username} - {self.weekday} الأسبوع {self.week_number} - {self.status}"
 
 
 # نموذج ترشيح الاختبار
