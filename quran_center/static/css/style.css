@@ -587,6 +587,7 @@ body.sidebar-open .mobile-overlay {
     width: 120px;
     height: 120px;
     margin: 0 auto 2rem;
+    border-radius: 12px;
     animation: float 3s ease-in-out infinite;
 }
 
@@ -798,4 +799,55 @@ body.sidebar-open .mobile-overlay {
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
+}
+
+/* WhatsApp Floating Button */
+.whatsapp-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 30px;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+    transition: all 0.3s ease;
+    z-index: 999;
+    animation: whatsappPulse 2s infinite;
+}
+
+.whatsapp-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 24px rgba(37, 211, 102, 0.6);
+    text-decoration: none;
+    color: white;
+}
+
+.whatsapp-btn:active {
+    transform: scale(0.95);
+}
+
+@keyframes whatsappPulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+    }
+    50% {
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.8);
+    }
+}
+
+/* Mobile responsiveness for WhatsApp button */
+@media (max-width: 768px) {
+    .whatsapp-btn {
+        width: 55px;
+        height: 55px;
+        bottom: 20px;
+        left: 20px;
+    }
 }
