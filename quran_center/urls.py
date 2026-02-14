@@ -3,9 +3,9 @@ from django.contrib.auth import views as auth_views
 from . import views
 
 urlpatterns = [
-    path('', views.home, name='home'),
+    path('', views.welcome_view, name='welcome'),
+    path('register/', views.home, name='home'),
     path('parent-inquiry/', views.parent_inquiry, name='parent_inquiry'),
-    path('welcome/', views.welcome_view, name='welcome'),
     path('success/', views.success_view, name='success'),
     path('pending/', views.pending_students, name='pending_students'),
     path('attendance/', views.take_attendance, name='take_attendance'),

@@ -34,7 +34,7 @@
             <div class="mobile-user">مرحباً، {{ user.username }}</div>
 
             {% if user.stage_supervisor or user.is_superuser or user|has_role:"supervisor" %}
-            <a href="{% url 'home' %}" class="mobile-nav-link">تسجيل طالب</a>
+            <!-- <a href="{% url 'home' %}" class="mobile-nav-link">تسجيل طالب</a> -->
             <a href="{% url 'pending_students' %}" class="mobile-nav-link">الطلاب المنتظرين</a>
             {% endif %}
 
@@ -69,7 +69,7 @@
         {% else %}
             <a href="{% url 'welcome' %}" class="mobile-nav-link">الصفحة الرئيسية</a>
             <a href="{% url 'login' %}" class="mobile-nav-link">دخول المعلمين</a>
-            <a href="{% url 'home' %}" class="mobile-nav-link">تسجيل طالب جديد</a>
+            <!-- <a href="{% url 'home' %}" class="mobile-nav-link">تسجيل طالب جديد</a> -->
             <a href="{% url 'parent_inquiry' %}" class="mobile-nav-link">الاستعلام عن حالة الأبناء</a>
         {% endif %}
     </div>
@@ -86,7 +86,7 @@
                 
                 <!-- روابط المشرف والمدير -->
                 {% if user.stage_supervisor or user.is_superuser or user|has_role:"supervisor" %}
-                <a href="{% url 'home' %}" class="btn btn-outline-success btn-sm me-2">تسجيل طالب</a>
+                <!-- <a href="{% url 'home' %}" class="btn btn-outline-success btn-sm me-2">تسجيل طالب</a> -->
                 <a href="{% url 'pending_students' %}" class="btn btn-outline-warning btn-sm me-2">الطلاب المنتظرين</a>
                 {% endif %}
                 

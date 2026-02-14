@@ -463,7 +463,8 @@ def preparer_take_attendance(request):
     if not user_has_role(request.user, 'preparer') and not request.user.is_superuser:
         return redirect('home')
 
-    teachers = User.objects.filter(student__isnull=False).distinct().order_by('username')
+    # teachers = User.objects.filter(student__isnull=False).distinct().order_by('username')
+    teachers = User.objects.distinct().order_by('username')
 
     today = timezone.now().date()
     selected_date_str = request.POST.get('attendance_date') or request.GET.get('date') or str(today)
