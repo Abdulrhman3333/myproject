@@ -5,17 +5,17 @@
 
 /* Core Variables */
 :root {
-    --primary-green: #1f6f5c;
-    --secondary-green: #2d8f72;
-    --dark-green: #0f2f28;
-    --light-green: rgba(31, 111, 92, 0.1);
-    --accent-blue: #0ea5e9;
+    --primary-blue: #5B8FBE;
+    --secondary-blue: #7BA3D1;
+    --dark-blue: #2C5282;
+    --light-blue: rgba(91, 143, 190, 0.1);
+    --accent-brown: #5B8FBE;
     --page-bg: #f3f5f7;
     --card-border: #e6ebef;
     --text-dark: #1e293b;
     --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
     --shadow-md: 0 12px 30px rgba(15,23,42,0.08);
-    --shadow-lg: 0 20px 40px rgba(31,111,92,0.15);
+    --shadow-lg: 0 20px 40px rgba(91,143,190,0.15);
     --radius: 12px;
     --transition: all 0.3s ease;
 }
@@ -46,9 +46,16 @@ body {
 
 /* Enhanced Navigation */
 .navbar {
-    background: linear-gradient(135deg, var(--dark-green) 0%, var(--primary-green) 100%) !important;
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--primary-blue) 100%) !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 1rem 0;
+    padding: 0.85rem 0;
+}
+
+.navbar .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
 }
 
 /* Mobile Sidebar Navigation */
@@ -57,7 +64,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    background: linear-gradient(135deg, var(--dark-green) 0%, var(--primary-green) 100%);
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--primary-blue) 100%);
     color: #ffffff;
     position: sticky;
     top: 0;
@@ -112,7 +119,7 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 1rem 1.1rem;
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
     color: #ffffff;
 }
 
@@ -127,7 +134,7 @@ body {
 }
 
 .mobile-user {
-    background: var(--light-green);
+    background: var(--light-blue);
     padding: 0.75rem 0.9rem;
     border-radius: 10px;
     color: var(--text-dark);
@@ -148,8 +155,8 @@ body {
 }
 
 .mobile-nav-link:hover {
-    background: var(--light-green);
-    color: var(--primary-green);
+    background: var(--light-blue);
+    color: var(--primary-blue);
 }
 
 .mobile-logout {
@@ -216,7 +223,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .auth-header {
-    background: linear-gradient(180deg, #1f6f5c 0%, #1b5c4d 100%);
+    background: linear-gradient(180deg, #5B8FBE 0%, #4A7BA7 100%);
     color: #ffffff;
     text-align: center;
     padding: 2.2rem 1.5rem 1.8rem;
@@ -281,7 +288,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .auth-btn {
-    background: linear-gradient(135deg, #1f6f5c 0%, #2d8f72 100%);
+    background: linear-gradient(135deg, #5B8FBE 0%, #7BA3D1 100%);
     color: #ffffff;
     border: none;
     border-radius: 12px;
@@ -313,15 +320,100 @@ body.sidebar-open .mobile-overlay {
 }
 
 .navbar .btn {
-    margin: 0.2rem;
+    margin: 0.3rem 0.25rem;
     transition: var(--transition);
-    font-weight: 500;
-    font-size: 0.9rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    border: 2px solid transparent;
 }
 
 .navbar .btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18);
+}
+
+/* Navbar Button Color Classes */
+.navbar .btn-outline-light,
+.navbar .btn-outline-warning,
+.navbar .btn-outline-success,
+.navbar .btn-outline-info,
+.navbar .btn-outline-primary,
+.navbar .btn-outline-secondary,
+.navbar .btn-outline-danger {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.navbar .btn-outline-light:hover,
+.navbar .btn-outline-warning:hover,
+.navbar .btn-outline-success:hover,
+.navbar .btn-outline-info:hover,
+.navbar .btn-outline-primary:hover,
+.navbar .btn-outline-secondary:hover {
+    background: var(--primary-blue);
+    border-color: var(--accent-brown);
+    color: #ffffff;
+}
+
+.navbar .btn-outline-danger:hover {
+    background: #dc2626;
+    border-color: var(--accent-brown);
+    color: #ffffff;
+}
+
+/* Navbar Text Styling */
+.navbar .text-white {
+    font-weight: 600;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+/* Navbar Buttons Container */
+.navbar > .container > div {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-end;
+}
+
+/* Improve mobile responsiveness */
+@media (max-width: 768px) {
+    .navbar .btn {
+        padding: 0.45rem 0.8rem;
+        font-size: 0.75rem;
+        margin: 0.2rem;
+    }
+}
+
+/* Navbar Form Styling */
+.navbar form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar form button {
+    margin: 0.3rem 0.25rem;
+    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    border: 2px solid #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+    color: #fca5a5;
+}
+
+.navbar form button:hover {
+    background: #dc2626;
+    border-color: var(--accent-brown);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.18);
 }
 
 /* Card Enhancements */
@@ -339,7 +431,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .card-header {
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
     color: white;
     font-weight: 600;
     padding: 1.25rem;
@@ -372,14 +464,14 @@ body.sidebar-open .mobile-overlay {
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: var(--primary-green);
+    border-color: var(--primary-blue);
     box-shadow: 0 0 0 3px rgba(31, 111, 92, 0.15);
     outline: none;
 }
 
 /* Button Enhancements */
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
     border: none;
     padding: 0.7rem 1.5rem;
     border-radius: 8px;
@@ -390,11 +482,11 @@ body.sidebar-open .mobile-overlay {
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 16px rgba(31, 111, 92, 0.3);
-    background: linear-gradient(135deg, var(--secondary-green) 0%, var(--primary-green) 100%);
+    background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
 }
 
 .btn-success {
-    background-color: var(--primary-green);
+    background-color: var(--primary-blue);
     border: none;
     border-radius: 8px;
     font-weight: 500;
@@ -402,7 +494,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .btn-success:hover {
-    background-color: var(--secondary-green);
+    background-color: var(--secondary-blue);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(31, 111, 92, 0.3);
 }
@@ -416,7 +508,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .table thead {
-    background: linear-gradient(135deg, var(--dark-green) 0%, var(--primary-green) 100%);
+    background: linear-gradient(135deg, var(--dark-blue) 0%, var(--primary-blue) 100%);
     color: white;
 }
 
@@ -439,7 +531,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .table tbody tr:hover {
-    background-color: var(--light-green);
+    background-color: var(--light-blue);
 }
 
 .table-responsive {
@@ -490,7 +582,7 @@ body.sidebar-open .mobile-overlay {
 
 /* Welcome Page Specific */
 .hero-section {
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 50%, var(--dark-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 50%, var(--dark-blue) 100%);
     border-radius: 20px;
     padding: 4rem 2rem;
     color: white;
@@ -499,11 +591,12 @@ body.sidebar-open .mobile-overlay {
     overflow: hidden;
     margin-bottom: 4rem;
     box-shadow: var(--shadow-lg);
+    border-bottom: 6px solid var(--accent-brown);
 }
 
 /* Inner Page Hero */
 .page-hero {
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 50%, var(--dark-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 50%, var(--dark-blue) 100%);
     border-radius: 18px;
     padding: 2.5rem 2rem;
     color: white;
@@ -512,6 +605,7 @@ body.sidebar-open .mobile-overlay {
     overflow: hidden;
     margin: 1rem 0 2rem;
     box-shadow: var(--shadow-md);
+    border-left: 5px solid var(--accent-brown);
 }
 
 .page-hero::before,
@@ -603,7 +697,8 @@ body.sidebar-open .mobile-overlay {
     text-align: center;
     box-shadow: var(--shadow-md);
     transition: var(--transition);
-    border-top: 4px solid var(--primary-green);
+    border-top: 4px solid var(--primary-blue);
+    border-left: 4px solid var(--accent-brown);
     height: 100%;
 }
 
@@ -618,30 +713,31 @@ body.sidebar-open .mobile-overlay {
 }
 
 .feature-card h5 {
-    color: var(--primary-green);
+    color: var(--primary-blue);
     font-weight: 700;
     margin: 1rem 0;
     font-size: 1.3rem;
 }
 
 .cta-section {
-    background: var(--light-green);
+    background: var(--light-blue);
     border-radius: 16px;
     padding: 3rem 2rem;
     text-align: center;
     margin: 4rem 0 2rem;
-    border: 2px solid rgba(31, 111, 92, 0.2);
+    border: 3px solid var(--accent-brown);
+    border-left: 8px solid var(--accent-brown);
 }
 
 .btn-login {
-    background: var(--primary-green);
+    background: var(--dark-blue);
     color: white;
     padding: 0.9rem 2.5rem;
     font-size: 1.1rem;
     font-weight: 600;
     border-radius: 8px;
-    border: none;
-    box-shadow: 0 10px 25px rgba(31, 111, 92, 0.3);
+    border: 2px solid var(--accent-brown);
+    box-shadow: 0 10px 25px rgba(44, 82, 130, 0.4);
     transition: var(--transition);
     text-decoration: none;
     display: inline-block;
@@ -649,20 +745,21 @@ body.sidebar-open .mobile-overlay {
 }
 
 .btn-login:hover {
-    background: var(--secondary-green);
+    background: var(--dark-blue);
     transform: translateY(-2px);
-    box-shadow: 0 15px 35px rgba(31, 111, 92, 0.4);
+    box-shadow: 0 15px 35px rgba(44, 82, 130, 0.6);
     color: white;
+    border-color: #A68157;
 }
 
 .btn-register {
     background: white;
-    color: var(--primary-green);
+    color: var(--dark-blue);
     padding: 0.9rem 2.5rem;
     font-size: 1.1rem;
     font-weight: 600;
     border-radius: 8px;
-    border: 2px solid var(--primary-green);
+    border: 2px solid var(--dark-blue);
     transition: var(--transition);
     text-decoration: none;
     display: inline-block;
@@ -670,20 +767,22 @@ body.sidebar-open .mobile-overlay {
 }
 
 .btn-register:hover {
-    background: var(--primary-green);
+    background: var(--dark-blue);
     color: white;
     transform: translateY(-2px);
+    border-color: var(--accent-brown);
+    box-shadow: 0 8px 20px rgba(44, 82, 130, 0.3);
 }
 
 .btn-inquiry {
-    background: var(--accent-blue);
+    background: var(--dark-blue);
     color: white;
     padding: 0.9rem 2.5rem;
     font-size: 1.1rem;
     font-weight: 600;
     border-radius: 8px;
-    border: none;
-    box-shadow: 0 10px 25px rgba(14, 165, 233, 0.3);
+    border: 2px solid var(--accent-brown);
+    box-shadow: 0 10px 25px rgba(44, 82, 130, 0.4);
     transition: var(--transition);
     text-decoration: none;
     display: inline-block;
@@ -691,10 +790,11 @@ body.sidebar-open .mobile-overlay {
 }
 
 .btn-inquiry:hover {
-    background: #0284c7;
+    background: var(--dark-blue);
     transform: translateY(-2px);
-    box-shadow: 0 15px 35px rgba(14, 165, 233, 0.4);
+    box-shadow: 0 15px 35px rgba(44, 82, 130, 0.6);
     color: white;
+    border-color: #A68157;
 }
 
 /* Dashboard Enhancements */
@@ -703,7 +803,8 @@ body.sidebar-open .mobile-overlay {
     border-radius: var(--radius);
     padding: 1.5rem;
     box-shadow: var(--shadow-sm);
-    border-left: 4px solid var(--primary-green);
+    border-left: 4px solid var(--primary-blue);
+    border-top: 3px solid var(--accent-brown);
     transition: var(--transition);
 }
 
@@ -720,7 +821,7 @@ body.sidebar-open .mobile-overlay {
 }
 
 .modal-header {
-    background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
     color: white;
     border-radius: var(--radius) var(--radius) 0 0;
     border: none;
