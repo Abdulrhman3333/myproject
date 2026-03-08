@@ -12,6 +12,7 @@ urlpatterns = [
     path('attendance/update/', views.update_attendance, name='update_attendance'),
     path('attendance/success/', views.attendance_success_view, name='attendance_success'),
     path('teacher-dashboard/', views.teacher_dashboard, name='teacher_dashboard'),
+    path('teacher-plan-generator/', views.teacher_plan_generator, name='teacher_plan_generator'),
     path('nominate-exam/', views.nominate_for_exam, name='nominate_exam'),
     path('teacher-nominations/', views.teacher_nominations, name='teacher_nominations'),
     path('teacher-nominations/<int:nomination_id>/delete/', views.delete_nomination, name='delete_nomination'),

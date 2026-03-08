@@ -40,6 +40,7 @@
 
             <a href="{% url 'teacher_dashboard' %}" class="mobile-nav-link">لوحة التحكم</a>
             <a href="{% url 'take_attendance' %}" class="mobile-nav-link">التحضير</a>
+            <a href="{% url 'teacher_plan_generator' %}" class="mobile-nav-link">منشئ الخطط</a>
             <a href="{% url 'nominate_exam' %}" class="mobile-nav-link">ترشيح الاختبار</a>
 
             {% if user|has_role:"examiner" %}
@@ -93,6 +94,7 @@
                 <!-- روابط المعلم -->
                 <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-info btn-sm me-2">لوحة التحكم</a>
                 <a href="{% url 'take_attendance' %}" class="btn btn-outline-light btn-sm me-2">التحضير</a>
+                <a href="{% url 'teacher_plan_generator' %}" class="btn btn-outline-primary btn-sm me-2">منشئ الخطط</a>
                 <a href="{% url 'nominate_exam' %}" class="btn btn-outline-primary btn-sm me-2">ترشيح الاختبار</a>
 
                 <!-- روابط المختبر -->

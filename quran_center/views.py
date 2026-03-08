@@ -255,6 +255,25 @@ def teacher_dashboard(request):
     
     return render(request, 'teacher_dashboard.html', context)
 
+
+@login_required
+def teacher_plan_generator(request):
+    """Teacher page that loads the planning tool with auto-filled student data."""
+    students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
+    students_payload = [
+        {
+            'id': student.student_unique_id or f"STD-{student.id}",
+            'name': student.full_name,
+        }
+        for student in students
+    ]
+
+    return render(
+        request,
+        'teacher_plan_generator.html',
+        {'students_payload': students_payload},
+    )
+
 @login_required
 def update_attendance(request):
     """تحديث حالة الحضور من لوحة تحكم المعلم"""

@@ -34,13 +34,13 @@ class UserRoleAdmin(admin.ModelAdmin):
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     # الأعمدة التي تظهر في الجدول للمدير
-    list_display = ('full_name', 'grade', 'educational_stage', 'status', 'teacher')
+    list_display = ('full_name', 'student_unique_id', 'grade', 'educational_stage', 'status', 'teacher')
     
     # فلاتر جانبية للبحث السريع
     list_filter = ('status', 'educational_stage', 'teacher', 'grade')
     
     # إمكانية البحث بالاسم أو الهوية
-    search_fields = ('full_name', 'identity_number')
+    search_fields = ('full_name', 'identity_number', 'student_unique_id')
     
     # إمكانية تعديل الحالة أو المعلم مباشرة من الجدول
     list_editable = ('status', 'teacher')

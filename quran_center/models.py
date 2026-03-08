@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
+import uuid
 
 # العضويات الافتراضية
 ROLE_CHOICES = [
@@ -81,14 +82,6 @@ class StageSupervisor(models.Model):
         return f"مشرف {self.stage}: {self.user.username}"
 
 class Student(models.Model):
-
-    identity_number = models.CharField(
-        max_length=10, 
-        validators=[id_validator], 
-        unique=True,
-        verbose_name="رقم الهوية"
-    )
-    
     # خيارات الصف الدراسي
     GRADE_CHOICES = [
         ('1_pri', 'أول ابتدائي'), ('2_pri', 'ثاني ابتدائي'), ('3_pri', 'ثالث ابتدائي'),
@@ -102,6 +95,7 @@ class Student(models.Model):
 
     # البيانات المطلوبة
     full_name = models.CharField(max_length=200, verbose_name="الاسم الثلاثي", blank=True, default="")
+    student_unique_id = models.CharField(max_length=24, unique=True, blank=True, null=True, editable=False, verbose_name="المعرف الفريد")
     student_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="جوال الطالب")
     parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر", blank=True, default="")
     identity_number = models.CharField(max_length=100, verbose_name="رقم الهوية", blank=True, null=True)
@@ -126,6 +120,14 @@ class Student(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        if not self.student_unique_id:
+            # A compact unique ID for each student that is stable and safe for exports.
+            while True:
+                candidate = f"STD-{uuid.uuid4().hex[:12].upper()}"
+                if not Student.objects.filter(student_unique_id=candidate).exists():
+                    self.student_unique_id = candidate
+                    break
+
         # أتمتة المرحلة الدراسية بناءً على الصف
         primary_early = ['1_pri', '2_pri', '3_pri']
         primary_late = ['4_pri', '5_pri', '6_pri']
