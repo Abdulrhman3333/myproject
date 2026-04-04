@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}خطة الطالب{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+    <div class="page-hero-inner">
+        <h1 class="page-hero-title">إنشاء خطة طالب</h1>
+        <p class="page-hero-subtitle">{{ student.full_name }} - رقم {{ student.student_unique_id }}</p>
+    </div>
+</div>
+
+<div class="container" dir="rtl">
+    <div class="alert alert-info mb-3">
+        تم تطبيق التفضيلات الافتراضية تلقائيا (نوع الحفظ وعدد صفحات المراجعة الكبرى). يمكنك تعديل الإعدادات من نموذج الطالب ثم تصدير الخطة PDF.
+    </div>
+
+    <div class="planner-shell">
+        <iframe
+            id="plannerFrame"
+            src="{% static 'plan_generator/index.html' %}?single=1&student_id={{ student.student_unique_id|urlencode }}&student_name={{ student.full_name|urlencode }}&mem_plan={{ preference.mem_plan|urlencode }}&big_pages={{ preference.big_review_pages|urlencode }}"
+            title="Student Plan Generator"
+            loading="lazy"
+            referrerpolicy="same-origin"
+        ></iframe>
+    </div>
+
+    <div class="mt-3 d-flex gap-2 justify-content-end">
+        <a href="{% url 'teacher_students_data' %}" class="btn btn-outline-secondary">العودة إلى بيانات الطلاب</a>
+    </div>
+</div>
+
+<style>
+.planner-shell {
+    width: 100%;
+    min-height: 78vh;
+    border: 1px solid #d0dcff;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f3f7ff;
+}
+
+#plannerFrame {
+    width: 100%;
+    min-height: 78vh;
+    border: 0;
+    display: block;
+}
+</style>
+
+{% endblock %}

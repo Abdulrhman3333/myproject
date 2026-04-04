@@ -24,10 +24,26 @@
     </form>
 
     <div class="card mb-4">
-        <div class="card-header bg-info text-white">أرقام الغياب ({{ phones_count }})</div>
+        <div class="card-header bg-danger text-white">أرقام أولياء أمور الغائبين ({{ absent_phones_count }})</div>
         <div class="card-body">
-            <textarea id="phonesText" class="form-control" rows="6" readonly>{{ phones_text }}</textarea>
-            <button type="button" class="btn btn-success mt-3" onclick="copyPhones()">نسخ جميع الأرقام</button>
+            <textarea id="absentPhonesText" class="form-control" rows="5" readonly>{{ absent_phones_text }}</textarea>
+            <button type="button" class="btn btn-danger mt-3" onclick="copyPhones('absentPhonesText')">نسخ أرقام الغائبين</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">أرقام أولياء أمور المتأخرين ({{ late_phones_count }})</div>
+        <div class="card-body">
+            <textarea id="latePhonesText" class="form-control" rows="5" readonly>{{ late_phones_text }}</textarea>
+            <button type="button" class="btn btn-secondary mt-3" onclick="copyPhones('latePhonesText')">نسخ أرقام المتأخرين</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-warning">أرقام أولياء أمور المستأذنين ({{ excused_phones_count }})</div>
+        <div class="card-body">
+            <textarea id="excusedPhonesText" class="form-control" rows="5" readonly>{{ excused_phones_text }}</textarea>
+            <button type="button" class="btn btn-warning mt-3" onclick="copyPhones('excusedPhonesText')">نسخ أرقام المستأذنين</button>
         </div>
     </div>
 
@@ -47,7 +63,10 @@
                     <tbody>
                         {% for item in at_risk %}
                         <tr>
-                            <td>{{ item.student.full_name }}</td>
+                            <td>
+                                {{ item.student.full_name }}
+                                <span class="badge bg-secondary ms-2">إجمالي الغياب: {{ item.total_absences }}</span>
+                            </td>
                             <td>{{ item.temp_count }}</td>
                             <td>
                                 <form method="post" style="display:inline;">
@@ -69,8 +88,11 @@
 </div>
 
 <script>
-function copyPhones() {
-    const text = document.getElementById('phonesText');
+function copyPhones(elementId) {
+    const text = document.getElementById(elementId);
+    if (!text) {
+        return;
+    }
     text.select();
     text.setSelectionRange(0, 99999);
     navigator.clipboard.writeText(text.value);

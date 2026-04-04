@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
-import uuid
 
 # العضويات الافتراضية
 ROLE_CHOICES = [
@@ -95,7 +94,7 @@ class Student(models.Model):
 
     # البيانات المطلوبة
     full_name = models.CharField(max_length=200, verbose_name="الاسم الثلاثي", blank=True, default="")
-    student_unique_id = models.CharField(max_length=24, unique=True, blank=True, null=True, editable=False, verbose_name="المعرف الفريد")
+    student_unique_id = models.PositiveIntegerField(unique=True, blank=True, null=True, editable=False, verbose_name="المعرف الفريد")
     student_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="جوال الطالب")
     parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر", blank=True, default="")
     identity_number = models.CharField(max_length=100, verbose_name="رقم الهوية", blank=True, null=True)
@@ -121,12 +120,8 @@ class Student(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.student_unique_id:
-            # A compact unique ID for each student that is stable and safe for exports.
-            while True:
-                candidate = f"STD-{uuid.uuid4().hex[:12].upper()}"
-                if not Student.objects.filter(student_unique_id=candidate).exists():
-                    self.student_unique_id = candidate
-                    break
+            max_id = Student.objects.aggregate(max_id=models.Max('student_unique_id'))['max_id'] or 0
+            self.student_unique_id = max_id + 1
 
         # أتمتة المرحلة الدراسية بناءً على الصف
         primary_early = ['1_pri', '2_pri', '3_pri']
@@ -290,3 +285,26 @@ class TeacherProfile(models.Model):
     
     def __str__(self):
         return f"ملف {self.user.username}"
+
+
+class TeacherPlanPreference(models.Model):
+    """Teacher default preferences used when generating a student plan."""
+    MEM_PLAN_CHOICES = [
+        ('2', 'صفحتان'),
+        ('1', 'صفحة'),
+        ('0.5', 'نصف صفحة'),
+        ('0.25', 'ربع صفحة'),
+    ]
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='plan_preference', verbose_name="المعلم")
+    mem_plan = models.CharField(max_length=10, choices=MEM_PLAN_CHOICES, default='1', verbose_name="نوع الحفظ الافتراضي")
+    big_review_pages = models.PositiveIntegerField(default=5, verbose_name="عدد صفحات المراجعة الكبرى")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "تفضيل خطة المعلم"
+        verbose_name_plural = "تفضيلات خطط المعلمين"
+
+    def __str__(self):
+        return f"تفضيلات {self.user.username}"

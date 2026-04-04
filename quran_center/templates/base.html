@@ -36,12 +36,15 @@
             {% if user.stage_supervisor or user.is_superuser or user|has_role:"supervisor" %}
             <!-- <a href="{% url 'home' %}" class="mobile-nav-link">تسجيل طالب</a> -->
             <a href="{% url 'pending_students' %}" class="mobile-nav-link">الطلاب المنتظرين</a>
+            <a href="{% url 'stage_students_data' %}" class="mobile-nav-link">بيانات طلاب المرحلة</a>
             {% endif %}
 
-            <a href="{% url 'teacher_dashboard' %}" class="mobile-nav-link">لوحة التحكم</a>
+            {% if not user.is_superuser and not user|has_role:"manager" %}
+            <a href="{% url 'teacher_dashboard' %}" class="mobile-nav-link">احصائية الغياب</a>
+            <a href="{% url 'teacher_students_data' %}" class="mobile-nav-link">بيانات الطلاب</a>
             <a href="{% url 'take_attendance' %}" class="mobile-nav-link">التحضير</a>
-            <a href="{% url 'teacher_plan_generator' %}" class="mobile-nav-link">منشئ الخطط</a>
             <a href="{% url 'nominate_exam' %}" class="mobile-nav-link">ترشيح الاختبار</a>
+            {% endif %}
 
             {% if user|has_role:"examiner" %}
             <a href="{% url 'nominated_students' %}" class="mobile-nav-link">قائمة المرشحين</a>
@@ -55,12 +58,14 @@
 
             {% if user|has_role:"preparer" %}
             <a href="{% url 'preparer_take_attendance' %}" class="mobile-nav-link">تحضير المعلمين</a>
+            <a href="{% url 'preparer_take_students_attendance' %}" class="mobile-nav-link">تحضير جميع الطلاب</a>
             <a href="{% url 'preparer_attendance_summary' %}" class="mobile-nav-link">متابعة التحضير</a>
             <a href="{% url 'preparer_absent_contacts' %}" class="mobile-nav-link">أرقام الغياب</a>
             {% endif %}
 
             {% if user.is_superuser or user|has_role:"manager" %}
             <a href="{% url 'admin:index' %}" class="mobile-nav-link">لوحة الإدارة</a>
+            <a href="{% url 'admin_statistics' %}" class="mobile-nav-link">الإحصائيات</a>
             {% endif %}
 
             <form method="post" action="{% url 'logout' %}">
@@ -89,13 +94,16 @@
                 {% if user.stage_supervisor or user.is_superuser or user|has_role:"supervisor" %}
                 <!-- <a href="{% url 'home' %}" class="btn btn-outline-success btn-sm me-2">تسجيل طالب</a> -->
                 <a href="{% url 'pending_students' %}" class="btn btn-outline-warning btn-sm me-2">الطلاب المنتظرين</a>
+                <a href="{% url 'stage_students_data' %}" class="btn btn-outline-warning btn-sm me-2">بيانات طلاب المرحلة</a>
                 {% endif %}
                 
-                <!-- روابط المعلم -->
-                <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-info btn-sm me-2">لوحة التحكم</a>
+                <!-- روابط المعلم (مخفية للمديرين) -->
+                {% if not user.is_superuser and not user|has_role:"manager" %}
+                <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-info btn-sm me-2">احصائية الغياب</a>
+                <a href="{% url 'teacher_students_data' %}" class="btn btn-outline-info btn-sm me-2">بيانات الطلاب</a>
                 <a href="{% url 'take_attendance' %}" class="btn btn-outline-light btn-sm me-2">التحضير</a>
-                <a href="{% url 'teacher_plan_generator' %}" class="btn btn-outline-primary btn-sm me-2">منشئ الخطط</a>
                 <a href="{% url 'nominate_exam' %}" class="btn btn-outline-primary btn-sm me-2">ترشيح الاختبار</a>
+                {% endif %}
 
                 <!-- روابط المختبر -->
                 {% if user|has_role:"examiner" %}
@@ -111,6 +119,7 @@
                 <!-- روابط المحضّر -->
                 {% if user|has_role:"preparer" %}
                 <a href="{% url 'preparer_take_attendance' %}" class="btn btn-outline-success btn-sm me-2">تحضير المعلمين</a>
+                <a href="{% url 'preparer_take_students_attendance' %}" class="btn btn-outline-success btn-sm me-2">تحضير جميع الطلاب</a>
                 <a href="{% url 'preparer_attendance_summary' %}" class="btn btn-outline-success btn-sm me-2">متابعة التحضير</a>
                 <a href="{% url 'preparer_absent_contacts' %}" class="btn btn-outline-success btn-sm me-2">أرقام الغياب</a>
                 {% endif %}
@@ -118,6 +127,7 @@
                 <!-- روابط المدير -->
                 {% if user.is_superuser or user|has_role:"manager" %}
                 <a href="{% url 'admin:index' %}" class="btn btn-outline-warning btn-sm me-2">لوحة الإدارة</a>
+                <a href="{% url 'admin_statistics' %}" class="btn btn-outline-warning btn-sm me-2">الإحصائيات</a>
                 {% endif %}
                 
                 <form method="post" action="{% url 'logout' %}" style="display: inline;">

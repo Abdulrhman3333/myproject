@@ -10,7 +10,33 @@
 </div>
 
 <div class="container" dir="rtl">
+    <h3 class="mb-3">المعلمون الذين لم يكملوا التحضير بعد</h3>
+    {% if pending %}
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered table-hover">
+            <thead class="table-warning">
+                <tr>
+                    <th>المعلم</th>
+                    <th>عدد الطلاب</th>
+                    <th>تم التحضير لـ</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in pending %}
+                <tr>
+                    <td>{{ item.display_name }}</td>
+                    <td>{{ item.student_count }}</td>
+                    <td>{{ item.recorded_count }} / {{ item.student_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-success mb-4">جميع المعلمين أكملوا التحضير اليوم.</div>
+    {% endif %}
 
+    <h3 class="mb-3">المعلمون الذين أكملوا التحضير</h3>
     {% if completed %}
     <div class="table-responsive">
         <table class="table table-bordered table-hover">
@@ -24,7 +50,7 @@
             <tbody>
                 {% for item in completed %}
                 <tr>
-                    <td>{{ item.teacher.username }}</td>
+                    <td>{{ item.display_name }}</td>
                     <td>{{ item.student_count }}</td>
                     <td>{% if item.last_time %}{{ item.last_time|date:"H:i:s" }}{% else %}-{% endif %}</td>
                 </tr>

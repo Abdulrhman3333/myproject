@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, Attendance, StageSupervisor, AcademicCalendar, ExamNomination, Role, UserRole
+from .models import Student, Attendance, StageSupervisor, AcademicCalendar, ExamNomination, Role, UserRole, TeacherPlanPreference
 
 @admin.register(StageSupervisor)
 class StageSupervisorAdmin(admin.ModelAdmin):
@@ -40,7 +40,7 @@ class StudentAdmin(admin.ModelAdmin):
     list_filter = ('status', 'educational_stage', 'teacher', 'grade')
     
     # إمكانية البحث بالاسم أو الهوية
-    search_fields = ('full_name', 'identity_number', 'student_unique_id')
+    search_fields = ('full_name', 'identity_number', 'student_unique_id__exact')
     
     # إمكانية تعديل الحالة أو المعلم مباشرة من الجدول
     list_editable = ('status', 'teacher')
@@ -51,4 +51,10 @@ class AttendanceAdmin(admin.ModelAdmin):
     list_filter = ('date', 'status', 'weekday', 'week_number')
     search_fields = ('student__full_name',)
     date_hierarchy = 'date'
+
+
+@admin.register(TeacherPlanPreference)
+class TeacherPlanPreferenceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'mem_plan', 'big_review_pages', 'updated_at')
+    search_fields = ('user__username',)
 

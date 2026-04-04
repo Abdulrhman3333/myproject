@@ -20,7 +20,6 @@
                 <thead class="table-dark">
                     <tr>
                         <th>اسم الطالب</th>
-                        <th>الصف</th>
                         <th>آخر جزء تم اختباره</th>
                         <th>درجة المعلم</th>
                         <th>حذف الترشيح</th>
@@ -30,7 +29,6 @@
                     {% for student in students %}
                     <tr>
                         <td>{{ student.full_name }}</td>
-                        <td>{{ student.get_grade_display }}</td>
                         <td><span class="badge bg-info">{{ student.get_last_tested_part_display }}</span></td>
                         <td>
                             <input type="number" 

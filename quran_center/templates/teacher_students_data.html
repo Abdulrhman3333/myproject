@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}بيانات الطلاب{% endblock %}
+
+{% block content %}
+<div class="page-hero">
+	<div class="page-hero-inner">
+		<h1 class="page-hero-title">بيانات الطلاب</h1>
+		<p class="page-hero-subtitle">عرض بيانات طلاب المعلم وإعداد تفضيلات الخطة</p>
+	</div>
+</div>
+
+<div class="container" dir="rtl">
+	<div class="card mb-4">
+		<div class="card-header bg-primary text-white">تفضيلات الخطة الافتراضية للمعلم</div>
+		<div class="card-body">
+			<form method="post" class="row g-3 align-items-end">
+				{% csrf_token %}
+				<div class="col-md-4">
+					<label for="mem_plan" class="form-label">نوع الحفظ</label>
+					<select id="mem_plan" name="mem_plan" class="form-select">
+						<option value="2" {% if preference.mem_plan == '2' %}selected{% endif %}>صفحتان</option>
+						<option value="1" {% if preference.mem_plan == '1' %}selected{% endif %}>صفحة</option>
+						<option value="0.5" {% if preference.mem_plan == '0.5' %}selected{% endif %}>نصف صفحة</option>
+						<option value="0.25" {% if preference.mem_plan == '0.25' %}selected{% endif %}>ربع صفحة</option>
+					</select>
+				</div>
+				<div class="col-md-4">
+					<label for="big_review_pages" class="form-label">عدد صفحات المراجعة الكبرى</label>
+					<input
+						id="big_review_pages"
+						name="big_review_pages"
+						type="number"
+						min="1"
+						class="form-control"
+						value="{{ preference.big_review_pages }}"
+					>
+				</div>
+				<div class="col-md-4">
+					<button type="submit" class="btn btn-success w-100">حفظ التفضيلات</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	{% if students_data %}
+	<div class="table-responsive">
+		<table class="table table-bordered table-hover">
+			<thead class="table-dark">
+				<tr>
+					<th>الرقم التسلسلي</th>
+					<th>المعرف الفريد</th>
+					<th>اسم الطالب</th>
+					<th>عدد الاجزاء</th>
+					<th>رقم جوال ولي الامر</th>
+					<th>رقم جوال الطالب</th>
+					<th>إنشاء خطة</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for item in students_data %}
+				<tr>
+					<td>{{ forloop.counter }}</td>
+					<td>{{ item.student.student_unique_id }}</td>
+					<td>{{ item.student.full_name }}</td>
+					<td>{{ item.parts_count }}</td>
+					<td>{{ item.student.parent_phone|default:'-' }}</td>
+					<td>{{ item.student.student_phone|default:'-' }}</td>
+					<td>
+						<a href="{% url 'teacher_student_plan' item.student.id %}" class="btn btn-outline-primary btn-sm">
+							إنشاء خطة
+						</a>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	{% else %}
+	<div class="alert alert-info">لا يوجد طلاب منتظمون لهذا المعلم حالياً.</div>
+	{% endif %}
+</div>
+{% endblock %}

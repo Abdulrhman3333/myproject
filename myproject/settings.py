@@ -23,9 +23,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-tk3^ya)p#+kcc*6(tua-=_@nz!kam8q!v)ui&ee5%31q9(c%_w"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['alhomoody.pythonanywhere.com', 'localhost',]
+# Allow local development host headers to avoid 400 Bad Request locally.
+ALLOWED_HOSTS = [
+    "alhomoody.pythonanywhere.com",
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+]
 
 
 # Application definition

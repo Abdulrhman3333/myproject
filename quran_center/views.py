@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from .forms import StudentRegistrationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole
+from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
@@ -63,6 +63,64 @@ def pending_students(request):
         return redirect('pending_students')
 
     return render(request, 'pending.html', {'students': students, 'teachers': teachers})
+
+@login_required
+def stage_students_data(request):
+    """صفحة عرض بيانات طلاب المرحلة - للمشرفين فقط"""
+    # التحقق من الصلاحيات
+    if not is_stage_supervisor(request.user):
+        return redirect('home')
+    
+    # جلب الطلاب حسب مرحلة المشرف
+    if request.user.is_superuser:
+        # المدير يرى جميع الطلاب المنتظمين
+        students = Student.objects.filter(status='منتظم')
+    elif hasattr(request.user, 'stage_supervisor'):
+        # مشرف المرحلة يرى فقط طلاب مرحلته المنتظمين
+        supervisor = request.user.stage_supervisor
+        students = Student.objects.filter(status='منتظم', educational_stage=supervisor.stage)
+    elif user_has_role(request.user, 'supervisor'):
+        # المشرف العام يرى جميع الطلاب المنتظمين
+        students = Student.objects.filter(status='منتظم')
+    else:
+        students = Student.objects.none()
+    
+    # ترتيب الطلاب حسب اسم المعلم ثم الاسم
+    students = students.order_by('teacher__username', 'full_name')
+    
+    # جلب جميع المعلمين لقائمة التعيين
+    teachers = User.objects.filter(
+        Q(student__isnull=False) | Q(is_staff=True)
+    ).distinct().order_by('username')
+    
+    # معالجة طلب تحديث المعلم
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        teacher_id = request.POST.get('teacher_id')
+        
+        try:
+            student = get_object_or_404(Student, id=student_id)
+            
+            # تعيين المعلم الجديد إذا تم اختياره
+            if teacher_id:
+                teacher = get_object_or_404(User, id=teacher_id)
+                student.teacher = teacher
+                student.save()
+        except:
+            pass
+        
+        return redirect('stage_students_data')
+    
+    # الحصول على المرحلة الحالية
+    current_stage = None
+    if hasattr(request.user, 'stage_supervisor'):
+        current_stage = request.user.stage_supervisor.stage
+    
+    return render(request, 'stage_students_data.html', {
+        'students': students,
+        'teachers': teachers,
+        'current_stage': current_stage,
+    })
 
 @login_required
 def take_attendance(request):
@@ -257,22 +315,81 @@ def teacher_dashboard(request):
 
 
 @login_required
-def teacher_plan_generator(request):
-    """Teacher page that loads the planning tool with auto-filled student data."""
+def teacher_students_data(request):
+    """عرض بيانات طلاب المعلم الحالي."""
+    preference, _ = TeacherPlanPreference.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        mem_plan = request.POST.get('mem_plan', preference.mem_plan)
+        big_review_pages = request.POST.get('big_review_pages', preference.big_review_pages)
+
+        if mem_plan not in {'2', '1', '0.5', '0.25'}:
+            mem_plan = '1'
+
+        try:
+            big_review_pages = int(big_review_pages)
+            if big_review_pages < 1:
+                big_review_pages = 1
+        except (TypeError, ValueError):
+            big_review_pages = preference.big_review_pages
+
+        preference.mem_plan = mem_plan
+        preference.big_review_pages = big_review_pages
+        preference.save()
+
+        return redirect('teacher_students_data')
+
     students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
-    students_payload = [
-        {
-            'id': student.student_unique_id or f"STD-{student.id}",
-            'name': student.full_name,
-        }
-        for student in students
-    ]
+
+    students_data = []
+    for student in students:
+        try:
+            parts_count = int(student.last_tested_part)
+        except (TypeError, ValueError):
+            parts_count = 0
+
+        students_data.append({
+            'student': student,
+            'parts_count': parts_count,
+        })
 
     return render(
         request,
-        'teacher_plan_generator.html',
-        {'students_payload': students_payload},
+        'teacher_students_data.html',
+        {
+            'students_data': students_data,
+            'preference': preference,
+        },
     )
+
+
+@login_required
+def teacher_student_plan(request, student_id):
+    """صفحة إنشاء خطة لطالب واحد باستخدام تفضيلات المعلم الافتراضية."""
+    student = get_object_or_404(
+        Student,
+        id=student_id,
+        teacher=request.user,
+        status='منتظم',
+    )
+    preference, _ = TeacherPlanPreference.objects.get_or_create(user=request.user)
+
+    student_payload = {
+        'id': str(student.student_unique_id or student.id),
+        'name': student.full_name,
+        'db_id': student.id,
+    }
+
+    return render(
+        request,
+        'teacher_student_plan.html',
+        {
+            'student': student,
+            'student_payload': student_payload,
+            'preference': preference,
+        },
+    )
+
 
 @login_required
 def update_attendance(request):
@@ -454,6 +571,7 @@ def preparer_attendance_summary(request):
 
     target_date = timezone.now().date()
     teachers = User.objects.filter(student__isnull=False).distinct().order_by('username')
+    pending = []
     completed = []
 
     for teacher in teachers:
@@ -461,16 +579,29 @@ def preparer_attendance_summary(request):
         if student_count == 0:
             continue
         attendance_qs = Attendance.objects.filter(student__teacher=teacher, date=target_date)
+        recorded_count = attendance_qs.count()
+        display_name = teacher.get_full_name() or teacher.username
+
         if attendance_qs.count() >= student_count:
             last_time = attendance_qs.aggregate(last_time=Max('created_at'))['last_time']
             completed.append({
                 'teacher': teacher,
+                'display_name': display_name,
                 'student_count': student_count,
+                'recorded_count': recorded_count,
                 'last_time': last_time,
+            })
+        else:
+            pending.append({
+                'teacher': teacher,
+                'display_name': display_name,
+                'student_count': student_count,
+                'recorded_count': recorded_count,
             })
 
     context = {
         'target_date': target_date,
+        'pending': pending,
         'completed': completed,
     }
     return render(request, 'preparer_attendance_summary.html', context)
@@ -557,6 +688,109 @@ def preparer_take_attendance(request):
 
 
 @login_required
+def preparer_take_students_attendance(request):
+    """تحضير طلاب أي معلم - للمحضّر أو المدير"""
+    if not user_has_role(request.user, 'preparer') and not request.user.is_superuser:
+        return redirect('home')
+
+    teachers = User.objects.filter(student__status='منتظم').distinct().order_by('username')
+
+    today = timezone.now().date()
+    selected_date_str = request.POST.get('attendance_date') or request.GET.get('date') or str(today)
+    selected_teacher_id = request.POST.get('teacher_id') or request.GET.get('teacher_id')
+
+    try:
+        selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        selected_date = today
+
+    weekday_map = {
+        6: 'الأحد',
+        0: 'الاثنين',
+        1: 'الثلاثاء',
+        2: 'الأربعاء',
+        3: 'الخميس',
+    }
+    current_weekday = weekday_map.get(selected_date.weekday(), 'الأحد')
+    current_week = AcademicCalendar.get_week_from_date(selected_date)
+
+    selected_teacher = None
+    students = Student.objects.none()
+    if selected_teacher_id:
+        try:
+            selected_teacher = teachers.get(id=selected_teacher_id)
+            students = Student.objects.filter(teacher=selected_teacher, status='منتظم').order_by('full_name')
+        except (User.DoesNotExist, ValueError, TypeError):
+            selected_teacher = None
+            students = Student.objects.none()
+
+    success = False
+    error_message = None
+
+    if request.method == 'POST':
+        posted_date_str = request.POST.get('attendance_date', str(selected_date))
+        try:
+            posted_date = datetime.strptime(posted_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            posted_date = selected_date
+
+        selected_weekday = weekday_map.get(posted_date.weekday(), 'الأحد')
+        selected_week = AcademicCalendar.get_week_from_date(posted_date)
+
+        if not selected_teacher:
+            error_message = 'يرجى اختيار المعلم أولاً.'
+        else:
+            for student in students:
+                status = request.POST.get(f'status_{student.id}')
+                if status:
+                    Attendance.objects.update_or_create(
+                        student=student,
+                        date=posted_date,
+                        defaults={
+                            'status': status,
+                            'weekday': selected_weekday,
+                            'week_number': selected_week,
+                        }
+                    )
+
+            success = True
+            selected_date = posted_date
+            current_weekday = selected_weekday
+            current_week = selected_week
+
+    existing_attendance = Attendance.objects.filter(student__in=students, date=selected_date)
+    attendance_map = {item.student_id: item.status for item in existing_attendance}
+
+    students_with_status = []
+    for student in students:
+        status = attendance_map.get(student.id, 'حاضر')
+        students_with_status.append({
+            'student': student,
+            'status': status,
+        })
+
+    teachers_with_names = []
+    for teacher in teachers:
+        teachers_with_names.append({
+            'teacher': teacher,
+            'display_name': teacher.get_full_name() or teacher.username,
+        })
+
+    context = {
+        'teachers': teachers_with_names,
+        'selected_teacher': selected_teacher,
+        'students_with_status': students_with_status,
+        'selected_date': selected_date,
+        'today': today,
+        'current_weekday': current_weekday,
+        'current_week': current_week,
+        'success': success,
+        'error_message': error_message,
+    }
+    return render(request, 'preparer_take_students_attendance.html', context)
+
+
+@login_required
 def preparer_absent_contacts(request):
     """أرقام أولياء الأمور للغائبين وإحصائية الغياب"""
     if not user_has_role(request.user, 'preparer'):
@@ -576,32 +810,50 @@ def preparer_absent_contacts(request):
             student.save()
             return redirect(f"{reverse('preparer_absent_contacts')}?date={target_date}")
 
-    absences = Attendance.objects.filter(date=target_date, status='غائب')
-    phones = []
-    for attendance in absences.select_related('student'):
-        phone = attendance.student.parent_phone or ''
+    def normalize_parent_phone(phone):
+        phone = phone or ''
         digits = ''.join([ch for ch in phone if ch.isdigit()])
         if digits.startswith('966'):
-            formatted = digits
+            return digits
         elif digits.startswith('0'):
-            formatted = '966' + digits[1:]
+            return '966' + digits[1:]
         elif digits.startswith('5'):
-            formatted = '966' + digits
+            return '966' + digits
         else:
-            formatted = digits
-        if formatted:
-            phones.append(formatted)
+            return digits
 
-    phones_text = "\n".join(sorted(set(phones)))
+    def collect_parent_phones_by_status(status_code):
+        status_attendance = Attendance.objects.filter(date=target_date, status=status_code).select_related('student')
+        phones = []
+        for attendance in status_attendance:
+            formatted = normalize_parent_phone(attendance.student.parent_phone)
+            if formatted:
+                phones.append(formatted)
+
+        unique_phones = sorted(set(phones))
+        return {
+            'phones': unique_phones,
+            'phones_text': "\n".join(unique_phones),
+            'phones_count': len(unique_phones),
+        }
+
+    absent_contacts = collect_parent_phones_by_status('غائب')
+    late_contacts = collect_parent_phones_by_status('متأخر')
+    excused_contacts = collect_parent_phones_by_status('مستأذن')
 
     at_risk = []
     students = Student.objects.filter(status='منتظم')
     for student in students:
+        total_absences = Attendance.objects.filter(
+            student=student,
+            status='غائب'
+        ).count()
+
         if student.absence_reset_at:
             temp_count = Attendance.objects.filter(
                 student=student,
                 status='غائب',
-                date__gt=student.absence_reset_at
+                created_at__date__gt=student.absence_reset_at
             ).count()
         else:
             temp_count = Attendance.objects.filter(
@@ -612,12 +864,17 @@ def preparer_absent_contacts(request):
             at_risk.append({
                 'student': student,
                 'temp_count': temp_count,
+                'total_absences': total_absences,
             })
 
     context = {
         'target_date': target_date,
-        'phones_text': phones_text,
-        'phones_count': len(set(phones)),
+        'absent_phones_text': absent_contacts['phones_text'],
+        'absent_phones_count': absent_contacts['phones_count'],
+        'late_phones_text': late_contacts['phones_text'],
+        'late_phones_count': late_contacts['phones_count'],
+        'excused_phones_text': excused_contacts['phones_text'],
+        'excused_phones_count': excused_contacts['phones_count'],
         'at_risk': at_risk,
     }
     return render(request, 'preparer_absent_contacts.html', context)
@@ -631,6 +888,117 @@ def is_admin(user):
 def admin_dashboard(request):
     # كود لوحة التحكم الشاملة
     return render(request, 'admin_view.html')
+
+@login_required
+@user_passes_test(is_admin)
+def admin_statistics(request):
+    """صفحة الإحصائيات الشاملة للمدير"""
+    from django.db.models import Count, Q
+    
+    # الحصول على جميع المراحل الموجودة
+    STAGES = [
+        ('مبكرة', 'مبكرة'),
+        ('عليا', 'عليا'),
+        ('متوسط', 'متوسط'),
+        ('ثانوي', 'ثانوي'),
+        ('جامعي', 'جامعي'),
+    ]
+    
+    # إحصائيات عامة
+    total_students = Student.objects.filter(status='منتظم').count()
+    total_tested = ExamNomination.objects.filter(internal_passed=True).count()
+    
+    # إجمالي الغياب اليومي
+    today = timezone.now().date()
+    total_absent_today = Attendance.objects.filter(date=today, status='غائب').count()
+    
+    # إحصائيات حسب المرحلة
+    stage_stats = []
+    for stage_code, stage_name in STAGES:
+        stage_students = Student.objects.filter(status='منتظم', educational_stage=stage_code)
+        stage_tested = ExamNomination.objects.filter(
+            student__educational_stage=stage_code,
+            internal_passed=True
+        ).count()
+        
+        # الغياب اليومي في هذه المرحلة
+        stage_absent_today = Attendance.objects.filter(
+            student__educational_stage=stage_code,
+            date=today,
+            status='غائب'
+        ).count()
+        
+        if stage_students.count() > 0:
+            stage_stats.append({
+                'stage': stage_name,
+                'total_students': stage_students.count(),
+                'tested': stage_tested,
+                'absent_today': stage_absent_today,
+            })
+    
+    # إحصائيات حسب المعلم
+    teachers = User.objects.filter(
+        student__status='منتظم'
+    ).distinct().order_by('username')
+    
+    teacher_stats = []
+    for teacher in teachers:
+        teacher_students = Student.objects.filter(teacher=teacher, status='منتظم')
+        teacher_tested = ExamNomination.objects.filter(
+            teacher=teacher,
+            internal_passed=True
+        ).count()
+        
+        # الغياب اليومي عند هذا المعلم
+        teacher_absent_today = Attendance.objects.filter(
+            student__teacher=teacher,
+            date=today,
+            status='غائب'
+        ).count()
+        
+        # إحصائيات المعلم حسب المرحلة
+        teacher_stage_stats = []
+        for stage_code, stage_name in STAGES:
+            stage_students = teacher_students.filter(educational_stage=stage_code)
+            if stage_students.count() > 0:
+                stage_tested = ExamNomination.objects.filter(
+                    teacher=teacher,
+                    student__educational_stage=stage_code,
+                    internal_passed=True
+                ).count()
+                
+                stage_absent = Attendance.objects.filter(
+                    student__teacher=teacher,
+                    student__educational_stage=stage_code,
+                    date=today,
+                    status='غائب'
+                ).count()
+                
+                teacher_stage_stats.append({
+                    'stage': stage_name,
+                    'total_students': stage_students.count(),
+                    'tested': stage_tested,
+                    'absent_today': stage_absent,
+                })
+        
+        teacher_stats.append({
+            'teacher': teacher.username,
+            'total_students': teacher_students.count(),
+            'tested': teacher_tested,
+            'absent_today': teacher_absent_today,
+            'stage_stats': teacher_stage_stats,
+        })
+    
+    context = {
+        'total_students': total_students,
+        'total_tested': total_tested,
+        'total_absent_today': total_absent_today,
+        'today': today,
+        'stage_stats': stage_stats,
+        'teacher_stats': teacher_stats,
+    }
+    
+    return render(request, 'admin_statistics.html', context)
 
 # 2. للمعلمين: أي مستخدم مسجل دخول (معلم أو مدير)
 @login_required
