@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
+from django.http import HttpResponse
 from .forms import StudentRegistrationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference
@@ -7,6 +8,7 @@ from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
 from datetime import datetime
+from openpyxl import Workbook
 
 # دالة مساعدة للتحقق من صلاحية مشرف المرحلة
 def is_stage_supervisor(user):
@@ -21,6 +23,83 @@ def user_has_role(user, role_code):
     if user.is_superuser:
         return True
     return UserRole.objects.filter(user=user, role__code=role_code).exists()
+
+
+ARABIC_WEEKDAY_NAMES = {
+    0: 'الاثنين',
+    1: 'الثلاثاء',
+    2: 'الأربعاء',
+    3: 'الخميس',
+    4: 'الجمعة',
+    5: 'السبت',
+    6: 'الأحد',
+}
+
+
+def get_arabic_weekday_name(target_date):
+    return ARABIC_WEEKDAY_NAMES.get(target_date.weekday(), 'الأحد')
+
+
+def normalize_saudi_phone(phone):
+    phone = phone or ''
+    digits = ''.join([ch for ch in phone if ch.isdigit()])
+    if digits.startswith('966'):
+        return digits
+    if digits.startswith('0'):
+        return '966' + digits[1:]
+    if digits.startswith('5'):
+        return '966' + digits
+    return digits
+
+
+def build_status_export_rows(target_date, status_code):
+    attendances = Attendance.objects.filter(date=target_date, status=status_code).select_related('student')
+    rows = []
+
+    for attendance in attendances:
+        student = attendance.student
+        full_name = student.full_name or ''
+        first_name = full_name.split()[0] if full_name.split() else ''
+        total_days = Attendance.objects.filter(student=student, status=status_code).count()
+
+        rows.append({
+            'phone_number': normalize_saudi_phone(student.parent_phone),
+            'first_name': first_name,
+            'full_name': full_name,
+            'total_days': total_days,
+            'today_date': target_date,
+            'today_day_name': get_arabic_weekday_name(target_date),
+        })
+
+    return rows
+
+
+def export_status_rows_to_excel(rows, status_label, target_date):
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = status_label
+    worksheet.sheet_view.rightToLeft = True
+
+    headers = ['رقم الجوال', 'الاسم الأول', 'الاسم الكامل', f'إجمالي أيام {status_label}', 'تاريخ اليوم', 'اسم اليوم']
+    worksheet.append(headers)
+
+    for row in rows:
+        worksheet.append([
+            row['phone_number'],
+            row['first_name'],
+            row['full_name'],
+            row['total_days'],
+            row['today_date'].strftime('%Y-%m-%d'),
+            row['today_day_name'],
+        ])
+
+    filename = f'preparer_contacts_{status_label}_{target_date.strftime("%Y-%m-%d")}.xlsx'
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    workbook.save(response)
+    return response
 
 @login_required
 def pending_students(request):
@@ -797,6 +876,7 @@ def preparer_absent_contacts(request):
         return redirect('home')
 
     target_date_str = request.GET.get('date') or str(timezone.now().date())
+    download_type = request.GET.get('download')
     try:
         target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
     except ValueError:
@@ -810,23 +890,11 @@ def preparer_absent_contacts(request):
             student.save()
             return redirect(f"{reverse('preparer_absent_contacts')}?date={target_date}")
 
-    def normalize_parent_phone(phone):
-        phone = phone or ''
-        digits = ''.join([ch for ch in phone if ch.isdigit()])
-        if digits.startswith('966'):
-            return digits
-        elif digits.startswith('0'):
-            return '966' + digits[1:]
-        elif digits.startswith('5'):
-            return '966' + digits
-        else:
-            return digits
-
     def collect_parent_phones_by_status(status_code):
         status_attendance = Attendance.objects.filter(date=target_date, status=status_code).select_related('student')
         phones = []
         for attendance in status_attendance:
-            formatted = normalize_parent_phone(attendance.student.parent_phone)
+            formatted = normalize_saudi_phone(attendance.student.parent_phone)
             if formatted:
                 phones.append(formatted)
 
@@ -840,6 +908,16 @@ def preparer_absent_contacts(request):
     absent_contacts = collect_parent_phones_by_status('غائب')
     late_contacts = collect_parent_phones_by_status('متأخر')
     excused_contacts = collect_parent_phones_by_status('مستأذن')
+
+    if download_type in {'absent', 'late', 'excused'}:
+        status_map = {
+            'absent': ('غائب', 'غياب'),
+            'late': ('متأخر', 'تأخر'),
+            'excused': ('مستأذن', 'استئذان'),
+        }
+        status_code, status_label = status_map[download_type]
+        rows = build_status_export_rows(target_date, status_code)
+        return export_status_rows_to_excel(rows, status_label, target_date)
 
     at_risk = []
     students = Student.objects.filter(status='منتظم')
