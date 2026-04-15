@@ -2,11 +2,51 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from .forms import StudentRegistrationForm
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.views import LoginView
 from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
 from datetime import datetime
+
+
+class TeacherLoginView(LoginView):
+    """تسجيل دخول المعلمين مع خيار تذكر اسم المستخدم والاستمرار في تسجيل الدخول."""
+    template_name = 'login.html'
+
+    def get_initial(self):
+        initial = super().get_initial()
+        remembered_username = self.request.COOKIES.get('remembered_username')
+        if remembered_username:
+            initial['username'] = remembered_username
+        return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['remembered_username'] = self.request.COOKIES.get('remembered_username', '')
+        return context
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        remember_me = self.request.POST.get('remember_me') == 'on'
+        username = form.cleaned_data.get('username', '')
+
+        if remember_me:
+            # إبقاء الجلسة فعالة لمدة 30 يوما.
+            self.request.session.set_expiry(60 * 60 * 24 * 30)
+            response.set_cookie(
+                'remembered_username',
+                username,
+                max_age=60 * 60 * 24 * 30,
+                httponly=False,
+                samesite='Lax'
+            )
+        else:
+            # بدون تذكرني: الجلسة تنتهي بإغلاق المتصفح.
+            self.request.session.set_expiry(0)
+            response.delete_cookie('remembered_username')
+
+        return response
 
 # دالة مساعدة للتحقق من صلاحية مشرف المرحلة
 def is_stage_supervisor(user):
@@ -911,6 +951,7 @@ def admin_statistics(request):
     # إجمالي الغياب اليومي
     today = timezone.now().date()
     total_absent_today = Attendance.objects.filter(date=today, status='غائب').count()
+    total_teacher_absent_today = TeacherAttendance.objects.filter(date=today, status='غائب').count()
     
     # إحصائيات حسب المرحلة
     stage_stats = []
@@ -955,6 +996,13 @@ def admin_statistics(request):
             date=today,
             status='غائب'
         ).count()
+
+        # غياب المعلم نفسه اليوم
+        teacher_self_absent_today = TeacherAttendance.objects.filter(
+            teacher=teacher,
+            date=today,
+            status='غائب'
+        ).count()
         
         # إحصائيات المعلم حسب المرحلة
         teacher_stage_stats = []
@@ -986,6 +1034,7 @@ def admin_statistics(request):
             'total_students': teacher_students.count(),
             'tested': teacher_tested,
             'absent_today': teacher_absent_today,
+            'teacher_self_absent_today': teacher_self_absent_today,
             'stage_stats': teacher_stage_stats,
         })
     
@@ -993,6 +1042,7 @@ def admin_statistics(request):
         'total_students': total_students,
         'total_tested': total_tested,
         'total_absent_today': total_absent_today,
+        'total_teacher_absent_today': total_teacher_absent_today,
         'today': today,
         'stage_stats': stage_stats,
         'teacher_stats': teacher_stats,

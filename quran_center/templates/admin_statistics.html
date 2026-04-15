@@ -11,7 +11,7 @@
     
     <!-- الإحصائيات العامة -->
     <div class="row mb-4">
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h5 class="card-title">إجمالي الطلاب</h5>
@@ -19,7 +19,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h5 class="card-title">الطلاب المختبرين</h5>
@@ -27,11 +27,19 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card bg-warning text-dark">
                 <div class="card-body">
                     <h5 class="card-title">الغياب اليومي</h5>
                     <h2 class="card-text">{{ total_absent_today }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">غياب المعلمين اليوم</h5>
+                    <h2 class="card-text">{{ total_teacher_absent_today }}</h2>
                 </div>
             </div>
         </div>
@@ -84,9 +92,10 @@
                     <h2 class="accordion-header">
                         <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#teacher_{{ teacher.teacher|slugify }}">
                             <strong>{{ teacher.teacher }}</strong>
-                            <span class="badge bg-primary ms-2">{{ teacher.total_students }}</span>
-                            <span class="badge bg-success ms-2">{{ teacher.tested }}</span>
-                            <span class="badge bg-warning text-dark ms-2">{{ teacher.absent_today }}</span>
+                            <span class="badge bg-primary ms-2">طلاب: {{ teacher.total_students }}</span>
+                            <span class="badge bg-success ms-2">مختبرين: {{ teacher.tested }}</span>
+                            <span class="badge bg-warning text-dark ms-2">غياب الطلاب: {{ teacher.absent_today }}</span>
+                            <span class="badge bg-danger ms-2">غياب المعلم: {{ teacher.teacher_self_absent_today }}</span>
                         </button>
                     </h2>
                     <div id="teacher_{{ teacher.teacher|slugify }}" class="accordion-collapse collapse" data-bs-parent="#teacherAccordion_{{ teacher.teacher|slugify }}">

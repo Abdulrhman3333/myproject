@@ -7,6 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
         <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -116,8 +117,11 @@
             </div>
 
             <div class="btn-container">
+                <button type="button" class="btn btn-secondary" id="importPlansBtn">⬆️ استيراد قوالب الحفظ (Excel)</button>
+                <button type="button" class="btn btn-secondary" id="exportPlansBtn">⬇️ تصدير قوالب الحفظ (Excel)</button>
                 <button class="btn btn-primary" onclick="downloadSelectedAsPDF(this)">📥 تحميل خطة الطالب PDF</button>
             </div>
+            <input type="file" id="importPlansInput" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none;">
         </div>
     </div>
 

@@ -28,6 +28,6 @@ urlpatterns = [
     path('preparer-absent-contacts/', views.preparer_absent_contacts, name='preparer_absent_contacts'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin-statistics/', views.admin_statistics, name='admin_statistics'),
-    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('login/', views.TeacherLoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='welcome'), name='logout'),
 ]
