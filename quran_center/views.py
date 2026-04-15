@@ -278,6 +278,13 @@ def render_message_template(template_text, row_data):
         'total_days': row_data.get('total_days', ''),
         'today_date': row_data.get('today_date', ''),
         'today_day_name': row_data.get('today_day_name', ''),
+        # Arabic aliases for template variables.
+        'الاسم_الأول': row_data.get('first_name', ''),
+        'الاسم_الكامل': row_data.get('full_name', ''),
+        'رقم_الجوال': row_data.get('phone_number', ''),
+        'المجموع': row_data.get('total_days', ''),
+        'التاريخ': row_data.get('today_date', ''),
+        'اليوم': row_data.get('today_day_name', ''),
     }
 
     rendered = template_text
@@ -384,14 +391,14 @@ def pending_students(request):
     # جلب الطلاب حسب مرحلة المشرف
     if request.user.is_superuser:
         # المدير يرى جميع الطلاب
-        students = Student.objects.filter(status='منتظر')
+        students = Student.objects.filter(status='منتظر').order_by('full_name')
     elif hasattr(request.user, 'stage_supervisor'):
         # مشرف المرحلة يرى فقط طلاب مرحلته
         supervisor = request.user.stage_supervisor
-        students = Student.objects.filter(status='منتظر', educational_stage=supervisor.stage)
+        students = Student.objects.filter(status='منتظر', educational_stage=supervisor.stage).order_by('full_name')
     elif user_has_role(request.user, 'supervisor'):
         # المشرف العام يرى جميع الطلاب
-        students = Student.objects.filter(status='منتظر')
+        students = Student.objects.filter(status='منتظر').order_by('full_name')
     else:
         students = Student.objects.none()
     
@@ -478,7 +485,7 @@ def stage_students_data(request):
 def take_attendance(request):
     """التحضير اليومي للمعلم"""
     # جلب طلاب هذا المعلم فقط والذين حالتهم "منتظم"
-    students = Student.objects.filter(teacher=request.user, status='منتظم')
+    students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
     
     # الحصول على التاريخ الحالي
     today = timezone.now().date()
@@ -571,12 +578,13 @@ def parent_inquiry(request):
         if not parent_phone:
             error_message = "يرجى إدخال رقم الجوال"
         else:
-            students = Student.objects.filter(parent_phone=parent_phone).select_related('teacher')
+            students = Student.objects.filter(parent_phone=parent_phone).select_related('teacher').order_by('full_name')
 
             for student in students:
                 attendances = Attendance.objects.filter(student=student).order_by('-date')
                 student.present_count = attendances.filter(status='حاضر').count()
                 student.absent_count = attendances.filter(status='غائب').count()
+                student.absent_excused_count = attendances.filter(status='غياب بعذر').count()
                 student.excused_count = attendances.filter(status='مستأذن').count()
                 student.late_count = attendances.filter(status='متأخر').count()
                 student.recent_attendance = attendances[:10]
@@ -710,7 +718,7 @@ def bulk_students_upload(request):
 def teacher_dashboard(request):
     """لوحة تحكم المعلم - عرض الإحصائيات"""
     # جلب طلاب المعلم
-    students = Student.objects.filter(teacher=request.user, status='منتظم')
+    students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
     
     # إحصائيات عامة
     total_students = students.count()
@@ -724,11 +732,12 @@ def teacher_dashboard(request):
         total_days = attendances.count()
         present = attendances.filter(status='حاضر').count()
         absent = attendances.filter(status='غائب').count()
+        absent_excused = attendances.filter(status='غياب بعذر').count()
         excused = attendances.filter(status='مستأذن').count()
         late = attendances.filter(status='متأخر').count()
         
         # عدد الأيام غير الحاضر (غياب + استئذان + تأخير)
-        non_present_count = absent + excused + late
+        non_present_count = absent + absent_excused + excused + late
         
         # جميع الحضور مع الحالة
         all_attendance = list(attendances.values('date', 'status').order_by('-date'))
@@ -738,6 +747,7 @@ def teacher_dashboard(request):
             'total_days': total_days,
             'present': present,
             'absent': absent,
+            'absent_excused': absent_excused,
             'excused': excused,
             'late': late,
             'non_present_count': non_present_count,
@@ -869,7 +879,7 @@ def update_attendance(request):
 def nominate_for_exam(request):
     """صفحة ترشيح الطلاب للاختبار الداخلي"""
     # جلب طلاب المعلم
-    students = Student.objects.filter(teacher=request.user, status='منتظم')
+    students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
 
     existing_nominations = ExamNomination.objects.filter(teacher=request.user)
     nomination_map = {item.student_id: item.id for item in existing_nominations}
@@ -923,7 +933,7 @@ def delete_pending_student(request, student_id):
 @login_required
 def teacher_nominations(request):
     """عرض الطلاب المرشحين من قبل المعلم"""
-    nominations = ExamNomination.objects.filter(teacher=request.user).order_by('-id')
+    nominations = ExamNomination.objects.filter(teacher=request.user).select_related('student').order_by('student__full_name', '-id')
 
     nominations_with_next = []
     for nomination in nominations:
@@ -940,7 +950,7 @@ def nominated_students(request):
     if not user_has_role(request.user, 'examiner'):
         return redirect('home')
 
-    nominations = ExamNomination.objects.filter(internal_passed=False)
+    nominations = ExamNomination.objects.filter(internal_passed=False).select_related('student').order_by('student__full_name', '-id')
     
     if request.method == 'POST':
         for nomination in nominations:
@@ -970,7 +980,7 @@ def association_candidates(request):
     if not user_has_role(request.user, 'examiner'):
         return redirect('home')
 
-    nominations = ExamNomination.objects.filter(internal_passed=True, association_tested=False)
+    nominations = ExamNomination.objects.filter(internal_passed=True, association_tested=False).select_related('student').order_by('student__full_name', '-id')
 
     if request.method == 'POST':
         for nomination in nominations:
@@ -997,7 +1007,7 @@ def association_results(request):
     if not (user_has_role(request.user, 'examiner') or user_has_role(request.user, 'manager')):
         return redirect('home')
 
-    nominations = ExamNomination.objects.filter(association_tested=True)
+    nominations = ExamNomination.objects.filter(association_tested=True).select_related('student').order_by('student__full_name', '-id')
     return render(request, 'association_results.html', {'nominations': nominations})
 
 
@@ -1113,6 +1123,8 @@ def preparer_take_attendance(request):
             'status': status,
         })
 
+    teachers_with_status.sort(key=lambda item: item['display_name'])
+
     context = {
         'teachers_with_status': teachers_with_status,
         'current_weekday': current_weekday,
@@ -1214,6 +1226,8 @@ def preparer_take_students_attendance(request):
             'display_name': teacher.get_full_name() or teacher.username,
         })
 
+    teachers_with_names.sort(key=lambda item: item['display_name'])
+
     context = {
         'teachers': teachers_with_names,
         'selected_teacher': selected_teacher,
@@ -1242,13 +1256,15 @@ def preparer_absent_contacts(request):
         target_date = timezone.now().date()
 
     default_templates = {
-        'absent': 'Hello {{{first_name}}}, your student {{{full_name}}} was absent today ({{{today_day_name}}} - {{{today_date}}}).',
-        'late': 'Hello {{{first_name}}}, your student {{{full_name}}} was late today ({{{today_day_name}}} - {{{today_date}}}).',
-        'excused': 'Hello {{{first_name}}}, this is to confirm {{{full_name}}} was marked as excused today ({{{today_day_name}}} - {{{today_date}}}).',
+        'absent': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع أيام غيابه حتى الآن: ({{{المجموع}}}) أيام.\nإدارة جامع الحمودي',
+        'absent_excused': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} بعذر اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات الغياب بعذر حتى الآن: ({{{المجموع}}}) يوم.\nإدارة جامع الحمودي',
+        'late': 'ولي الأمر المكرم، نحيطكم علماً بتأخر الابن {{{الاسم_الأول}}} عن حلقة اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات التأخير: ({{{المجموع}}}).\nإدارة جامع الحمودي',
+        'excused': 'ولي الأمر المكرم، نود إحاطتكم باستئذان الابن {{{الاسم_الأول}}} وخروجه قبل نهاية وقت الحلقة اليوم {{{اليوم}}}. مجموع مرات الاستئذان: ({{{المجموع}}}).\nإدارة جامع الحمودي',
     }
 
     current_templates = {
         'absent': request.POST.get('absent_sms_template', default_templates['absent']),
+        'absent_excused': request.POST.get('absent_excused_sms_template', default_templates['absent_excused']),
         'late': request.POST.get('late_sms_template', default_templates['late']),
         'excused': request.POST.get('excused_sms_template', default_templates['excused']),
     }
@@ -1277,11 +1293,13 @@ def preparer_absent_contacts(request):
         }
 
     absent_contacts = collect_parent_phones_by_status('غائب')
+    absent_excused_contacts = collect_parent_phones_by_status('غياب بعذر')
     late_contacts = collect_parent_phones_by_status('متأخر')
     excused_contacts = collect_parent_phones_by_status('مستأذن')
 
     status_rows = {
         'absent': build_status_export_rows(target_date, 'غائب'),
+        'absent_excused': build_status_export_rows(target_date, 'غياب بعذر'),
         'late': build_status_export_rows(target_date, 'متأخر'),
         'excused': build_status_export_rows(target_date, 'مستأذن'),
     }
@@ -1298,9 +1316,10 @@ def preparer_absent_contacts(request):
                 'failures': batch_result['failures'],
             }
 
-    if download_type in {'absent', 'late', 'excused'}:
+    if download_type in {'absent', 'absent_excused', 'late', 'excused'}:
         status_map = {
             'absent': ('غائب', 'غياب'),
+            'absent_excused': ('غياب بعذر', 'غياب_بعذر'),
             'late': ('متأخر', 'تأخر'),
             'excused': ('مستأذن', 'استئذان'),
         }
@@ -1309,7 +1328,7 @@ def preparer_absent_contacts(request):
         return export_status_rows_to_excel(rows, status_label, target_date)
 
     at_risk = []
-    students = Student.objects.filter(status='منتظم')
+    students = Student.objects.filter(status='منتظم').order_by('full_name')
     for student in students:
         total_absences = Attendance.objects.filter(
             student=student,
@@ -1338,11 +1357,14 @@ def preparer_absent_contacts(request):
         'target_date': target_date,
         'absent_phones_text': absent_contacts['phones_text'],
         'absent_phones_count': absent_contacts['phones_count'],
+        'absent_excused_phones_text': absent_excused_contacts['phones_text'],
+        'absent_excused_phones_count': absent_excused_contacts['phones_count'],
         'late_phones_text': late_contacts['phones_text'],
         'late_phones_count': late_contacts['phones_count'],
         'excused_phones_text': excused_contacts['phones_text'],
         'excused_phones_count': excused_contacts['phones_count'],
         'absent_sms_template': current_templates['absent'],
+        'absent_excused_sms_template': current_templates['absent_excused'],
         'late_sms_template': current_templates['late'],
         'excused_sms_template': current_templates['excused'],
         'sms_feedback': sms_feedback,

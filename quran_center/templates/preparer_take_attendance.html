@@ -55,7 +55,7 @@
                     <td>
                         <input type="hidden" name="status_{{ item.teacher.id }}" id="input_{{ item.teacher.id }}" value="{{ item.status }}">
                         <button type="button"
-                            class="btn {% if item.status == 'غائب' %}btn-danger{% elif item.status == 'مستأذن' %}btn-warning{% elif item.status == 'متأخر' %}btn-secondary{% else %}btn-primary{% endif %}"
+                            class="btn {% if item.status == 'غائب' %}btn-danger{% elif item.status == 'غياب بعذر' %}btn-dark{% elif item.status == 'مستأذن' %}btn-warning{% elif item.status == 'متأخر' %}btn-secondary{% else %}btn-primary{% endif %}"
                             onclick="toggleStatus('{{ item.teacher.id }}')"
                             id="btn_{{ item.teacher.id }}">{{ item.status }}</button>
                     </td>
@@ -120,6 +120,10 @@ function toggleStatus(id) {
         btn.innerText = 'غائب';
         btn.className = 'btn btn-danger';
     } else if (input.value === 'غائب') {
+        input.value = 'غياب بعذر';
+        btn.innerText = 'غياب بعذر';
+        btn.className = 'btn btn-dark';
+    } else if (input.value === 'غياب بعذر') {
         input.value = 'مستأذن';
         btn.innerText = 'مستأذن';
         btn.className = 'btn btn-warning';
