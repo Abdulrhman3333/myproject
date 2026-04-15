@@ -27,7 +27,10 @@
         <div class="card-header bg-danger text-white">أرقام أولياء أمور الغائبين ({{ absent_phones_count }})</div>
         <div class="card-body">
             <textarea id="absentPhonesText" class="form-control" rows="5" readonly>{{ absent_phones_text }}</textarea>
-            <button type="button" class="btn btn-danger mt-3" onclick="copyPhones('absentPhonesText')">نسخ أرقام الغائبين</button>
+            <div class="d-flex gap-2 flex-wrap mt-3">
+                <button type="button" class="btn btn-danger" onclick="copyPhones('absentPhonesText')">نسخ أرقام الغائبين</button>
+                <a class="btn btn-outline-danger" href="{% url 'preparer_absent_contacts' %}?date={{ target_date|date:'Y-m-d' }}&download=absent">تحميل Excel للغائبين</a>
+            </div>
         </div>
     </div>
 
@@ -35,7 +38,10 @@
         <div class="card-header bg-secondary text-white">أرقام أولياء أمور المتأخرين ({{ late_phones_count }})</div>
         <div class="card-body">
             <textarea id="latePhonesText" class="form-control" rows="5" readonly>{{ late_phones_text }}</textarea>
-            <button type="button" class="btn btn-secondary mt-3" onclick="copyPhones('latePhonesText')">نسخ أرقام المتأخرين</button>
+            <div class="d-flex gap-2 flex-wrap mt-3">
+                <button type="button" class="btn btn-secondary" onclick="copyPhones('latePhonesText')">نسخ أرقام المتأخرين</button>
+                <a class="btn btn-outline-secondary" href="{% url 'preparer_absent_contacts' %}?date={{ target_date|date:'Y-m-d' }}&download=late">تحميل Excel للمتأخرين</a>
+            </div>
         </div>
     </div>
 
@@ -43,7 +49,10 @@
         <div class="card-header bg-warning">أرقام أولياء أمور المستأذنين ({{ excused_phones_count }})</div>
         <div class="card-body">
             <textarea id="excusedPhonesText" class="form-control" rows="5" readonly>{{ excused_phones_text }}</textarea>
-            <button type="button" class="btn btn-warning mt-3" onclick="copyPhones('excusedPhonesText')">نسخ أرقام المستأذنين</button>
+            <div class="d-flex gap-2 flex-wrap mt-3">
+                <button type="button" class="btn btn-warning" onclick="copyPhones('excusedPhonesText')">نسخ أرقام المستأذنين</button>
+                <a class="btn btn-outline-warning" href="{% url 'preparer_absent_contacts' %}?date={{ target_date|date:'Y-m-d' }}&download=excused">تحميل Excel للمستأذنين</a>
+            </div>
         </div>
     </div>
 
