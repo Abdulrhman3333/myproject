@@ -101,7 +101,7 @@ class Student(models.Model):
     jamiaa_id = models.CharField(max_length=100, verbose_name="رقم الجمعية", blank=True, null=True)
     parent_identity = models.CharField(max_length=50, verbose_name="رقم هوية ولي الأمر", blank=True, null=True)
     grade = models.CharField(max_length=20, choices=GRADE_CHOICES, verbose_name="الصف الدراسي", blank=True, default="")
-    birth_date = models.DateField(verbose_name="تاريخ الميلاد", blank=True, null=True)
+    birth_date = models.CharField(max_length=50, verbose_name="تاريخ الميلاد", blank=True, null=True)
     last_tested_part = models.CharField(
         max_length=50,
         choices=LAST_TESTED_PART_CHOICES,

@@ -1,15 +1,16 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import HttpResponse
-from .forms import StudentRegistrationForm
+from .forms import StudentRegistrationForm, StudentBulkUploadForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
 from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
-from datetime import datetime
-from openpyxl import Workbook
+from datetime import datetime, date, timedelta
+from openpyxl import Workbook, load_workbook
+from uuid import uuid4
 
 
 class TeacherLoginView(LoginView):
@@ -90,6 +91,125 @@ def normalize_saudi_phone(phone):
     if digits.startswith('5'):
         return '966' + digits
     return digits
+
+
+def normalize_excel_value(value):
+    if value is None:
+        return ''
+    return str(value).strip()
+
+
+def normalize_arabic_text(value):
+    text = normalize_excel_value(value)
+    replacements = {
+        'أ': 'ا',
+        'إ': 'ا',
+        'آ': 'ا',
+        'ى': 'ي',
+        'ة': 'ه',
+    }
+    for old_char, new_char in replacements.items():
+        text = text.replace(old_char, new_char)
+    return ' '.join(text.split()).lower()
+
+
+def map_grade_from_excel(raw_grade):
+    text_value = normalize_excel_value(raw_grade)
+    if not text_value:
+        return ''
+
+    # Accept internal code directly (e.g. 3_pri).
+    valid_codes = {choice[0] for choice in Student.GRADE_CHOICES}
+    if text_value in valid_codes:
+        return text_value
+
+    normalized_text = normalize_arabic_text(text_value)
+
+    # Values that mean "not selected yet" are accepted as empty grade.
+    empty_markers = {
+        normalize_arabic_text('لم يتم التحديد بعد'),
+        normalize_arabic_text('غير محدد'),
+        normalize_arabic_text('غير محدده'),
+        normalize_arabic_text('لا يوجد'),
+    }
+    if normalized_text in empty_markers:
+        return ''
+
+    # Accept official labels and common writing variants.
+    label_map = {
+        normalize_arabic_text('أول ابتدائي'): '1_pri',
+        normalize_arabic_text('اول ابتدائي'): '1_pri',
+        normalize_arabic_text('اولى ابتدائي'): '1_pri',
+        normalize_arabic_text('اولي ابتدائي'): '1_pri',
+        normalize_arabic_text('ثاني ابتدائي'): '2_pri',
+        normalize_arabic_text('ثانيه ابتدائي'): '2_pri',
+        normalize_arabic_text('ثالث ابتدائي'): '3_pri',
+        normalize_arabic_text('ثالثه ابتدائي'): '3_pri',
+        normalize_arabic_text('رابع ابتدائي'): '4_pri',
+        normalize_arabic_text('رابعه ابتدائي'): '4_pri',
+        normalize_arabic_text('خامس ابتدائي'): '5_pri',
+        normalize_arabic_text('خامسه ابتدائي'): '5_pri',
+        normalize_arabic_text('سادس ابتدائي'): '6_pri',
+        normalize_arabic_text('سادسه ابتدائي'): '6_pri',
+        normalize_arabic_text('أول متوسط'): '1_med',
+        normalize_arabic_text('اول متوسط'): '1_med',
+        normalize_arabic_text('اولى متوسط'): '1_med',
+        normalize_arabic_text('اولي متوسط'): '1_med',
+        normalize_arabic_text('ثاني متوسط'): '2_med',
+        normalize_arabic_text('ثالث متوسط'): '3_med',
+        normalize_arabic_text('أول ثانوي'): '1_sec',
+        normalize_arabic_text('اول ثانوي'): '1_sec',
+        normalize_arabic_text('ثاني ثانوي'): '2_sec',
+        normalize_arabic_text('ثالث ثانوي'): '3_sec',
+        normalize_arabic_text('جامعي'): 'uni',
+    }
+
+    return label_map.get(normalized_text, '')
+
+
+def parse_excel_birth_date(value):
+    if value in (None, ''):
+        return ''
+
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d')
+
+    if isinstance(value, date):
+        return value.isoformat()
+
+    if isinstance(value, (int, float)):
+        try:
+            base_date = datetime(1899, 12, 30)
+            parsed = base_date + timedelta(days=float(value))
+            return parsed.strftime('%Y-%m-%d')
+        except Exception:
+            return str(value)
+
+    text = str(value).strip()
+    digit_map = str.maketrans('٠١٢٣٤٥٦٧٨٩', '0123456789')
+    text = text.translate(digit_map)
+    return text
+
+
+def read_excel_sheet_as_dicts(uploaded_file):
+    workbook = load_workbook(uploaded_file, data_only=True)
+    sheet = workbook.active
+    rows = list(sheet.iter_rows(values_only=True))
+    if not rows:
+        return []
+
+    headers = [normalize_excel_value(item) for item in rows[0]]
+    data_rows = []
+
+    for row_idx, row_values in enumerate(rows[1:], start=2):
+        row_data = {}
+        for col_idx, header in enumerate(headers):
+            if not header:
+                continue
+            row_data[header] = row_values[col_idx] if col_idx < len(row_values) else None
+        data_rows.append({'excel_row': row_idx, 'data': row_data})
+
+    return data_rows
 
 
 def build_status_export_rows(target_date, status_code):
@@ -386,6 +506,92 @@ def home(request):
         form = StudentRegistrationForm()
     
     return render(request, 'home.html', {'form': form})
+
+
+@login_required
+def bulk_students_upload(request):
+    if not (request.user.is_superuser or user_has_role(request.user, 'manager')):
+        return redirect('home')
+
+    form = StudentBulkUploadForm(request.POST or None, request.FILES or None)
+    result = None
+
+    if request.method == 'POST' and form.is_valid():
+        uploaded_file = form.cleaned_data['excel_file']
+        last_part_choices = {choice[0] for choice in Student._meta.get_field('last_tested_part').choices}
+        status_default = Student._meta.get_field('status').default
+
+        created_count = 0
+        skipped_count = 0
+        row_errors = []
+
+        try:
+            rows = read_excel_sheet_as_dicts(uploaded_file)
+        except Exception:
+            form.add_error('excel_file', 'تعذر قراءة الملف. تأكد أن الملف بصيغة Excel صحيحة (.xlsx).')
+            rows = []
+
+        for row in rows:
+            row_number = row['excel_row']
+            data = row['data']
+
+            full_name = normalize_excel_value(data.get('full_name'))
+            identity_number = normalize_excel_value(data.get('identity_number'))
+
+            if not full_name and not identity_number:
+                skipped_count += 1
+                continue
+
+            if not identity_number:
+                identity_number = f'GEN_{uuid4().hex[:12]}'
+
+            if Student.objects.filter(identity_number=identity_number).exists():
+                skipped_count += 1
+                row_errors.append(f'السطر {row_number}: رقم الهوية {identity_number} موجود مسبقاً.')
+                continue
+
+            grade_input = data.get('grade')
+            grade = map_grade_from_excel(grade_input)
+            if normalize_excel_value(grade_input) and not grade:
+                skipped_count += 1
+                row_errors.append(f'السطر {row_number}: الصف الدراسي "{normalize_excel_value(grade_input)}" غير صحيح.')
+                continue
+
+            last_tested_part = normalize_excel_value(data.get('last_tested_part')) or '0'
+            if last_tested_part not in last_part_choices:
+                last_tested_part = '0'
+
+            birth_date = parse_excel_birth_date(data.get('birth_date'))
+
+            Student.objects.create(
+                full_name=full_name,
+                student_phone=normalize_excel_value(data.get('student_phone')),
+                parent_phone=normalize_excel_value(data.get('parent_phone')),
+                identity_number=identity_number,
+                jamiaa_id=normalize_excel_value(data.get('jamiaa_id')),
+                parent_identity=normalize_excel_value(data.get('parent_identity')),
+                grade=grade,
+                birth_date=birth_date,
+                last_tested_part=last_tested_part,
+                previous_center=normalize_excel_value(data.get('previous_center')),
+                neighborhood=normalize_excel_value(data.get('neighborhood')),
+                status=status_default,
+            )
+            created_count += 1
+
+        if created_count > 0:
+            form = StudentBulkUploadForm()
+
+        result = {
+            'created_count': created_count,
+            'skipped_count': skipped_count,
+            'row_errors': row_errors,
+        }
+
+    return render(request, 'bulk_students_upload.html', {
+        'form': form,
+        'result': result,
+    })
 
 @login_required
 def teacher_dashboard(request):

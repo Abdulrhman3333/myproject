@@ -24,7 +24,23 @@ class StudentRegistrationForm(forms.ModelForm):
             'identity_number': forms.TextInput(attrs={'class': 'form-control'}),
             'parent_identity': forms.TextInput(attrs={'class': 'form-control'}),
             'grade': forms.Select(attrs={'class': 'form-select'}),
-            'birth_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'birth_date': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'مثال: 15/04/2012'}),
             'previous_center': forms.TextInput(attrs={'class': 'form-control'}),
             'neighborhood': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+
+class StudentBulkUploadForm(forms.Form):
+    excel_file = forms.FileField(
+        label='ملف Excel',
+        widget=forms.FileInput(attrs={'class': 'form-control', 'accept': '.xlsx'})
+    )
+
+    def clean_excel_file(self):
+        excel_file = self.cleaned_data['excel_file']
+        filename = excel_file.name.lower()
+
+        if not filename.endswith('.xlsx'):
+            raise forms.ValidationError('يرجى رفع ملف Excel بصيغة .xlsx')
+
+        return excel_file

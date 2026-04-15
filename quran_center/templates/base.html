@@ -64,6 +64,7 @@
             {% endif %}
 
             {% if user.is_superuser or user|has_role:"manager" %}
+            <a href="{% url 'bulk_students_upload' %}" class="mobile-nav-link">رفع طلاب Excel</a>
             <a href="{% url 'admin:index' %}" class="mobile-nav-link">لوحة الإدارة</a>
             <a href="{% url 'admin_statistics' %}" class="mobile-nav-link">الإحصائيات</a>
             {% endif %}
@@ -126,6 +127,7 @@
                 
                 <!-- روابط المدير -->
                 {% if user.is_superuser or user|has_role:"manager" %}
+                <a href="{% url 'bulk_students_upload' %}" class="btn btn-outline-warning btn-sm me-2">رفع طلاب Excel</a>
                 <a href="{% url 'admin:index' %}" class="btn btn-outline-warning btn-sm me-2">لوحة الإدارة</a>
                 <a href="{% url 'admin_statistics' %}" class="btn btn-outline-warning btn-sm me-2">الإحصائيات</a>
                 {% endif %}
