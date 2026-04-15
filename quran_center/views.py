@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import HttpResponse
+from django.conf import settings
 from .forms import StudentRegistrationForm, StudentBulkUploadForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
@@ -11,6 +12,9 @@ from django.db.models import Count, Q, Max
 from datetime import datetime, date, timedelta
 from openpyxl import Workbook, load_workbook
 from uuid import uuid4
+import json
+from urllib import request as urlrequest
+from urllib.error import HTTPError, URLError
 
 
 class TeacherLoginView(LoginView):
@@ -260,6 +264,115 @@ def export_status_rows_to_excel(rows, status_label, target_date):
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     workbook.save(response)
     return response
+
+
+def render_message_template(template_text, row_data):
+    """Simple token renderer for templates like: Hello {{{first_name}}}."""
+    if not template_text:
+        return ''
+
+    placeholders = {
+        'first_name': row_data.get('first_name', ''),
+        'full_name': row_data.get('full_name', ''),
+        'phone_number': row_data.get('phone_number', ''),
+        'total_days': row_data.get('total_days', ''),
+        'today_date': row_data.get('today_date', ''),
+        'today_day_name': row_data.get('today_day_name', ''),
+    }
+
+    rendered = template_text
+    for key, value in placeholders.items():
+        rendered = rendered.replace(f'{{{{{{{key}}}}}}}', str(value or ''))
+    return rendered.strip()
+
+
+def send_sms_via_api(phone_number, message_text):
+    """Send one SMS using a configurable JSON API endpoint."""
+    api_url = getattr(settings, 'SMS_API_URL', '').strip()
+    api_key = getattr(settings, 'SMS_API_KEY', '').strip()
+
+    if not api_url:
+        return False, 'SMS API URL is not configured.'
+    if not api_key:
+        return False, 'SMS API key is not configured.'
+
+    phone_field = getattr(settings, 'SMS_PHONE_FIELD', 'to')
+    message_field = getattr(settings, 'SMS_MESSAGE_FIELD', 'message')
+    sender_field = getattr(settings, 'SMS_SENDER_FIELD', 'sender')
+    sender_id = getattr(settings, 'SMS_SENDER_ID', '').strip()
+
+    phone_is_array = bool(getattr(settings, 'SMS_PHONE_IS_ARRAY', False))
+
+    payload = {
+        phone_field: [phone_number] if phone_is_array else phone_number,
+        message_field: message_text,
+    }
+
+    if sender_id:
+        payload[sender_field] = sender_id
+    elif sender_field == 'src':
+        return False, 'SMS_SENDER_ID is not configured (required field: src).'
+
+    auth_header = getattr(settings, 'SMS_AUTH_HEADER', 'Authorization')
+    auth_scheme = getattr(settings, 'SMS_AUTH_SCHEME', 'Bearer').strip()
+    auth_value = f'{auth_scheme} {api_key}' if auth_scheme else api_key
+
+    body = json.dumps(payload).encode('utf-8')
+    req = urlrequest.Request(
+        api_url,
+        data=body,
+        headers={
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            auth_header: auth_value,
+        },
+        method='POST',
+    )
+
+    try:
+        timeout = int(getattr(settings, 'SMS_API_TIMEOUT', 15))
+        with urlrequest.urlopen(req, timeout=timeout) as response:
+            status_code = getattr(response, 'status', 200)
+            return 200 <= status_code < 300, f'HTTP {status_code}'
+    except HTTPError as exc:
+        return False, f'HTTP {exc.code}'
+    except URLError as exc:
+        return False, f'URL error: {exc.reason}'
+    except Exception as exc:
+        return False, str(exc)
+
+
+def send_batch_messages(rows, template_text):
+    """Send templated messages to each row phone and return a summary."""
+    success_count = 0
+    failed_count = 0
+    failures = []
+
+    for row in rows:
+        phone_number = row.get('phone_number')
+        if not phone_number:
+            failed_count += 1
+            failures.append('رقم هاتف فارغ')
+            continue
+
+        message_text = render_message_template(template_text, row)
+        if not message_text:
+            failed_count += 1
+            failures.append(f'{phone_number}: الرسالة فارغة')
+            continue
+
+        ok, info = send_sms_via_api(phone_number, message_text)
+        if ok:
+            success_count += 1
+        else:
+            failed_count += 1
+            failures.append(f'{phone_number}: {info}')
+
+    return {
+        'success_count': success_count,
+        'failed_count': failed_count,
+        'failures': failures[:5],
+    }
 
 @login_required
 def pending_students(request):
@@ -1121,12 +1234,24 @@ def preparer_absent_contacts(request):
     if not user_has_role(request.user, 'preparer'):
         return redirect('home')
 
-    target_date_str = request.GET.get('date') or str(timezone.now().date())
+    target_date_str = request.GET.get('date') or request.POST.get('date') or str(timezone.now().date())
     download_type = request.GET.get('download')
     try:
         target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
     except ValueError:
         target_date = timezone.now().date()
+
+    default_templates = {
+        'absent': 'Hello {{{first_name}}}, your student {{{full_name}}} was absent today ({{{today_day_name}}} - {{{today_date}}}).',
+        'late': 'Hello {{{first_name}}}, your student {{{full_name}}} was late today ({{{today_day_name}}} - {{{today_date}}}).',
+        'excused': 'Hello {{{first_name}}}, this is to confirm {{{full_name}}} was marked as excused today ({{{today_day_name}}} - {{{today_date}}}).',
+    }
+
+    current_templates = {
+        'absent': request.POST.get('absent_sms_template', default_templates['absent']),
+        'late': request.POST.get('late_sms_template', default_templates['late']),
+        'excused': request.POST.get('excused_sms_template', default_templates['excused']),
+    }
 
     if request.method == 'POST':
         reset_student_id = request.POST.get('reset_student_id')
@@ -1154,6 +1279,24 @@ def preparer_absent_contacts(request):
     absent_contacts = collect_parent_phones_by_status('غائب')
     late_contacts = collect_parent_phones_by_status('متأخر')
     excused_contacts = collect_parent_phones_by_status('مستأذن')
+
+    status_rows = {
+        'absent': build_status_export_rows(target_date, 'غائب'),
+        'late': build_status_export_rows(target_date, 'متأخر'),
+        'excused': build_status_export_rows(target_date, 'مستأذن'),
+    }
+
+    sms_feedback = None
+    if request.method == 'POST':
+        sms_action = request.POST.get('sms_action')
+        if sms_action in status_rows:
+            batch_result = send_batch_messages(status_rows[sms_action], current_templates[sms_action])
+            sms_feedback = {
+                'section': sms_action,
+                'success_count': batch_result['success_count'],
+                'failed_count': batch_result['failed_count'],
+                'failures': batch_result['failures'],
+            }
 
     if download_type in {'absent', 'late', 'excused'}:
         status_map = {
@@ -1199,6 +1342,10 @@ def preparer_absent_contacts(request):
         'late_phones_count': late_contacts['phones_count'],
         'excused_phones_text': excused_contacts['phones_text'],
         'excused_phones_count': excused_contacts['phones_count'],
+        'absent_sms_template': current_templates['absent'],
+        'late_sms_template': current_templates['late'],
+        'excused_sms_template': current_templates['excused'],
+        'sms_feedback': sms_feedback,
         'at_risk': at_risk,
     }
     return render(request, 'preparer_absent_contacts.html', context)

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -137,4 +138,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = 'teacher_dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
+
+# SMS API configuration (set these in environment variables on the server).
+SMS_API_URL = os.getenv('SMS_API_URL', 'https://api.oursms.com/msgs/sms')
+SMS_API_KEY = os.getenv('SMS_API_KEY', '')
+SMS_SENDER_ID = os.getenv('SMS_SENDER_ID', '')
+SMS_API_TIMEOUT = int(os.getenv('SMS_API_TIMEOUT', '15'))
+SMS_AUTH_HEADER = os.getenv('SMS_AUTH_HEADER', 'Authorization')
+SMS_AUTH_SCHEME = os.getenv('SMS_AUTH_SCHEME', 'Bearer')
+SMS_PHONE_FIELD = os.getenv('SMS_PHONE_FIELD', 'dests')
+SMS_MESSAGE_FIELD = os.getenv('SMS_MESSAGE_FIELD', 'body')
+SMS_SENDER_FIELD = os.getenv('SMS_SENDER_FIELD', 'src')
+SMS_PHONE_IS_ARRAY = os.getenv('SMS_PHONE_IS_ARRAY', 'True').lower() == 'true'
 
