@@ -184,7 +184,7 @@ class Attendance(models.Model):
         ('حاضر', 'حاضر'),
         ('غائب', 'غائب'),
         ('غياب بعذر', 'غياب بعذر'),
-        ('مستأذن', 'مستأذن'),
+        ('مستأذن', 'منصرف'),
         ('متأخر', 'متأخر'),
     ]
     
@@ -218,7 +218,7 @@ class TeacherAttendance(models.Model):
         ('حاضر', 'حاضر'),
         ('غائب', 'غائب'),
         ('غياب بعذر', 'غياب بعذر'),
-        ('مستأذن', 'مستأذن'),
+        ('مستأذن', 'منصرف'),
         ('متأخر', 'متأخر'),
     ]
 
@@ -310,3 +310,26 @@ class TeacherPlanPreference(models.Model):
 
     def __str__(self):
         return f"تفضيلات {self.user.username}"
+
+
+class SmsTemplateSetting(models.Model):
+    """Per-user SMS templates used by preparer absent contacts page."""
+    SECTION_CHOICES = [
+        ('absent', 'غياب'),
+        ('absent_excused', 'غياب بعذر'),
+        ('late', 'تأخر'),
+        ('excused', 'انصراف'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sms_template_settings', verbose_name="المستخدم")
+    section = models.CharField(max_length=20, choices=SECTION_CHOICES, verbose_name="القسم")
+    template_text = models.TextField(verbose_name="نص القالب")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="آخر تحديث")
+
+    class Meta:
+        verbose_name = "قالب رسالة SMS"
+        verbose_name_plural = "قوالب رسائل SMS"
+        unique_together = ('user', 'section')
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_section_display()}"

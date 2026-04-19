@@ -49,7 +49,7 @@
                                 <div style="font-size: 1.5rem; font-weight: bold; color: #111827;">{{ student.absent_excused_count }}</div>
                             </div>
                             <div class="col-6 col-md-3">
-                                <small class="text-muted">مستأذن</small>
+                                <small class="text-muted">منصرف</small>
                                 <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;">{{ student.excused_count }}</div>
                             </div>
                             <div class="col-6 col-md-3">
@@ -84,7 +84,7 @@
                                                 {% elif attendance.status == "غياب بعذر" %}
                                                     <span class="badge bg-dark">{{ attendance.status }}</span>
                                                 {% elif attendance.status == "مستأذن" %}
-                                                    <span class="badge bg-warning text-dark">{{ attendance.status }}</span>
+                                                    <span class="badge bg-warning text-dark">منصرف</span>
                                                 {% elif attendance.status == "متأخر" %}
                                                     <span class="badge bg-purple" style="background-color: #8b5cf6;">{{ attendance.status }}</span>
                                                 {% endif %}

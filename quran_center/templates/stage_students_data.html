@@ -8,6 +8,27 @@
 </div>
 
 <div class="container" dir="rtl">
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">فلترة طلاب المرحلة حسب التاريخ</div>
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">من تاريخ</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">تطبيق الفلتر</button>
+                    <a href="{% url 'stage_students_data' %}" class="btn btn-outline-secondary">إلغاء</a>
+                </div>
+            </form>
+            <small class="text-muted d-block mt-2">الترتيب تلقائي من الأكثر غياباً إلى الأقل ضمن النطاق المحدد.</small>
+        </div>
+    </div>
     
     <!-- Desktop Table View -->
     <div class="table-responsive d-none d-md-block">
@@ -20,6 +41,7 @@
                     <th>جوال الطالب</th>
                     <th>الحي</th>
                     <th>آخر جزء</th>
+                    <th>عدد الغياب</th>
                 </tr>
             </thead>
             <tbody>
@@ -44,6 +66,7 @@
                     <td>
                         <span class="badge bg-primary">{{ student.get_last_tested_part_display|default:"-" }}</span>
                     </td>
+                    <td><span class="badge bg-danger">{{ student.absent_count_in_range|default:0 }}</span></td>
                 </tr>
                 {% empty %}
                 <tr>
@@ -76,6 +99,10 @@
                     <div class="col-6">
                         <small class="text-muted d-block">آخر جزء</small>
                         <strong><span class="badge bg-primary">{{ student.get_last_tested_part_display|default:"-" }}</span></strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">عدد الغياب</small>
+                        <strong><span class="badge bg-danger">{{ student.absent_count_in_range|default:0 }}</span></strong>
                     </div>
                 </div>
 

@@ -10,6 +10,27 @@
 </div>
 
 <div class="container" dir="rtl">
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">فلترة الإحصائية حسب التاريخ</div>
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">من تاريخ</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">تطبيق الفلتر</button>
+                    <a href="{% url 'teacher_dashboard' %}" class="btn btn-outline-secondary">إلغاء</a>
+                </div>
+            </form>
+            <small class="text-muted d-block mt-2">يتم ترتيب الطلاب تلقائياً من الأكثر غياباً إلى الأقل ضمن النطاق المحدد.</small>
+        </div>
+    </div>
    
     <!-- إحصائيات عامة -->
     <div class="row mb-4">
@@ -24,7 +45,7 @@
     </div>
     
     <!-- إحصائيات الحضور لكل طالب -->
-    <h3 class="mb-3">إحصائيات الحضور (كامل الفترة)</h3>
+    <h3 class="mb-3">إحصائيات الحضور {% if start_date or end_date %}(ضمن النطاق المحدد){% else %}(كامل الفترة){% endif %}</h3>
     
     {% if attendance_stats %}
     <div class="table-responsive">
@@ -36,7 +57,7 @@
                     <th>حاضر</th>
                     <th>غائب</th>
                     <th>غياب بعذر</th>
-                    <th>مستأذن</th>
+                    <th>منصرف</th>
                     <th>متأخر</th>
                 </tr>
             </thead>
@@ -122,7 +143,7 @@
                                                                     <option value="حاضر" selected>حاضر</option>
                                                                     <option value="غائب">غائب</option>
                                                                     <option value="غياب بعذر">غياب بعذر</option>
-                                                                    <option value="مستأذن">مستأذن</option>
+                                                                    <option value="مستأذن">منصرف</option>
                                                                     <option value="متأخر">متأخر</option>
                                                                 </select>
                                                             </td>
@@ -171,7 +192,7 @@
                                                                     <option value="حاضر">حاضر</option>
                                                                     <option value="غائب" selected>غائب</option>
                                                                     <option value="غياب بعذر">غياب بعذر</option>
-                                                                    <option value="مستأذن">مستأذن</option>
+                                                                    <option value="مستأذن">منصرف</option>
                                                                     <option value="متأخر">متأخر</option>
                                                                 </select>
                                                             </td>
@@ -220,7 +241,7 @@
                                                                     <option value="حاضر">حاضر</option>
                                                                     <option value="غائب">غائب</option>
                                                                     <option value="غياب بعذر" selected>غياب بعذر</option>
-                                                                    <option value="مستأذن">مستأذن</option>
+                                                                    <option value="مستأذن">منصرف</option>
                                                                     <option value="متأخر">متأخر</option>
                                                                 </select>
                                                             </td>
@@ -240,14 +261,14 @@
                         </div>
                     </div>
                     
-                    <!-- Modal لتعديل أيام الاستئذان -->
+                    <!-- Modal لتعديل أيام الانصراف -->
                     <div class="modal fade" id="modal_excused{{ student_id }}" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <form method="post" action="{% url 'update_attendance' %}">
                                     {% csrf_token %}
                                     <div class="modal-header">
-                                        <h5 class="modal-title">أيام الاستئذان - {{ stats.student.full_name }}</h5>
+                                        <h5 class="modal-title">أيام الانصراف - {{ stats.student.full_name }}</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
                                     <div class="modal-body">
@@ -269,7 +290,7 @@
                                                                     <option value="حاضر">حاضر</option>
                                                                     <option value="غائب">غائب</option>
                                                                     <option value="غياب بعذر">غياب بعذر</option>
-                                                                    <option value="مستأذن" selected>مستأذن</option>
+                                                                    <option value="مستأذن" selected>منصرف</option>
                                                                     <option value="متأخر">متأخر</option>
                                                                 </select>
                                                             </td>
@@ -318,7 +339,7 @@
                                                                     <option value="حاضر">حاضر</option>
                                                                     <option value="غائب">غائب</option>
                                                                     <option value="غياب بعذر">غياب بعذر</option>
-                                                                    <option value="مستأذن">مستأذن</option>
+                                                                    <option value="مستأذن">منصرف</option>
                                                                     <option value="متأخر" selected>متأخر</option>
                                                                 </select>
                                                             </td>

@@ -15,6 +15,16 @@
         تم تطبيق التفضيلات الافتراضية تلقائيا (نوع الحفظ وعدد صفحات المراجعة الكبرى). يمكنك تعديل الإعدادات من نموذج الطالب ثم تصدير الخطة PDF.
     </div>
 
+    <div class="alert alert-warning mb-3">
+        إذا لم تظهر الأداة داخل الصفحة بسبب إعدادات الأمان في الاستضافة، استخدم الفتح المباشر:
+        <a
+            class="btn btn-sm btn-outline-dark ms-2"
+            href="{% static 'plan_generator/index.html' %}?single=1&student_id={{ student.student_unique_id|urlencode }}&student_name={{ student.full_name|urlencode }}&mem_plan={{ preference.mem_plan|urlencode }}&big_pages={{ preference.big_review_pages|urlencode }}"
+            target="_blank"
+            rel="noopener"
+        >فتح مولد الخطة في صفحة مستقلة</a>
+    </div>
+
     <div class="planner-shell">
         <iframe
             id="plannerFrame"

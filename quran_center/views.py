@@ -5,7 +5,7 @@ from django.conf import settings
 from .forms import StudentRegistrationForm, StudentBulkUploadForm
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.views import LoginView
-from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference
+from .models import Student, Attendance, TeacherAttendance, StageSupervisor, AcademicCalendar, ExamNomination, UserRole, TeacherPlanPreference, SmsTemplateSetting
 from django.utils import timezone
 from django.contrib.auth.models import User
 from django.db.models import Count, Q, Max
@@ -15,6 +15,7 @@ from uuid import uuid4
 import json
 from urllib import request as urlrequest
 from urllib.error import HTTPError, URLError
+from urllib.parse import quote, unquote
 
 
 class TeacherLoginView(LoginView):
@@ -25,12 +26,23 @@ class TeacherLoginView(LoginView):
         initial = super().get_initial()
         remembered_username = self.request.COOKIES.get('remembered_username')
         if remembered_username:
+            try:
+                remembered_username = unquote(remembered_username)
+            except Exception:
+                remembered_username = ''
+        if remembered_username:
             initial['username'] = remembered_username
         return initial
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['remembered_username'] = self.request.COOKIES.get('remembered_username', '')
+        remembered_username = self.request.COOKIES.get('remembered_username', '')
+        if remembered_username:
+            try:
+                remembered_username = unquote(remembered_username)
+            except Exception:
+                remembered_username = ''
+        context['remembered_username'] = remembered_username
         return context
 
     def form_valid(self, form):
@@ -38,19 +50,20 @@ class TeacherLoginView(LoginView):
         remember_me = self.request.POST.get('remember_me') == 'on'
         username = form.cleaned_data.get('username', '')
 
+        # Keep user logged in for a long period by default after first login.
+        self.request.session.set_expiry(60 * 60 * 24 * 30)
+
         if remember_me:
-            # إبقاء الجلسة فعالة لمدة 30 يوما.
-            self.request.session.set_expiry(60 * 60 * 24 * 30)
+            # Cookie values must be ASCII-safe; encode to avoid crashes with Arabic usernames.
+            safe_username = quote(username, safe='')
             response.set_cookie(
                 'remembered_username',
-                username,
+                safe_username,
                 max_age=60 * 60 * 24 * 30,
                 httponly=False,
                 samesite='Lax'
             )
         else:
-            # بدون تذكرني: الجلسة تنتهي بإغلاق المتصفح.
-            self.request.session.set_expiry(0)
             response.delete_cookie('remembered_username')
 
         return response
@@ -222,14 +235,24 @@ def build_status_export_rows(target_date, status_code):
 
     for attendance in attendances:
         student = attendance.student
+        teacher = student.teacher
         full_name = student.full_name or ''
         first_name = full_name.split()[0] if full_name.split() else ''
         total_days = Attendance.objects.filter(student=student, status=status_code).count()
+        teacher_name = ''
+        teacher_phone = ''
+
+        if teacher:
+            teacher_name = teacher.get_full_name() or teacher.username or ''
+            profile = getattr(teacher, 'teacher_profile', None)
+            teacher_phone = normalize_saudi_phone(getattr(profile, 'phone', '')) if profile else ''
 
         rows.append({
             'phone_number': normalize_saudi_phone(student.parent_phone),
             'first_name': first_name,
             'full_name': full_name,
+            'teacher_name': teacher_name,
+            'teacher_phone': teacher_phone,
             'total_days': total_days,
             'today_date': target_date,
             'today_day_name': get_arabic_weekday_name(target_date),
@@ -275,6 +298,8 @@ def render_message_template(template_text, row_data):
         'first_name': row_data.get('first_name', ''),
         'full_name': row_data.get('full_name', ''),
         'phone_number': row_data.get('phone_number', ''),
+        'teacher_name': row_data.get('teacher_name', ''),
+        'teacher_phone': row_data.get('teacher_phone', ''),
         'total_days': row_data.get('total_days', ''),
         'today_date': row_data.get('today_date', ''),
         'today_day_name': row_data.get('today_day_name', ''),
@@ -282,6 +307,9 @@ def render_message_template(template_text, row_data):
         'الاسم_الأول': row_data.get('first_name', ''),
         'الاسم_الكامل': row_data.get('full_name', ''),
         'رقم_الجوال': row_data.get('phone_number', ''),
+        'اسم_المعلم': row_data.get('teacher_name', ''),
+        'جوال_المعلم': row_data.get('teacher_phone', ''),
+        'رقم_جوال_المعلم': row_data.get('teacher_phone', ''),
         'المجموع': row_data.get('total_days', ''),
         'التاريخ': row_data.get('today_date', ''),
         'اليوم': row_data.get('today_day_name', ''),
@@ -444,8 +472,36 @@ def stage_students_data(request):
     else:
         students = Student.objects.none()
     
-    # ترتيب الطلاب حسب اسم المعلم ثم الاسم
-    students = students.order_by('teacher__username', 'full_name')
+    # فلترة التاريخ لاحتساب الغياب ضمن نطاق محدد
+    today = timezone.now().date()
+    start_date_str = (request.GET.get('start_date') or '').strip()
+    end_date_str = (request.GET.get('end_date') or '').strip()
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
+    except ValueError:
+        start_date = None
+
+    try:
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+    except ValueError:
+        end_date = None
+
+    if start_date and end_date and start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    # نحتاج قائمة فعلية لإضافة العد ثم الترتيب حسب الأعلى غياباً
+    students = list(students.select_related('teacher').order_by('teacher__username', 'full_name'))
+
+    for student in students:
+        attendance_qs = Attendance.objects.filter(student=student, status='غائب')
+        if start_date:
+            attendance_qs = attendance_qs.filter(date__gte=start_date)
+        if end_date:
+            attendance_qs = attendance_qs.filter(date__lte=end_date)
+        student.absent_count_in_range = attendance_qs.count()
+
+    students.sort(key=lambda s: (-getattr(s, 'absent_count_in_range', 0), s.full_name or ''))
     
     # جلب جميع المعلمين لقائمة التعيين
     teachers = User.objects.filter(
@@ -467,7 +523,15 @@ def stage_students_data(request):
                 student.save()
         except:
             pass
-        
+
+        query = []
+        if start_date:
+            query.append(f"start_date={start_date.strftime('%Y-%m-%d')}")
+        if end_date:
+            query.append(f"end_date={end_date.strftime('%Y-%m-%d')}")
+
+        if query:
+            return redirect(f"{reverse('stage_students_data')}?{'&'.join(query)}")
         return redirect('stage_students_data')
     
     # الحصول على المرحلة الحالية
@@ -479,6 +543,9 @@ def stage_students_data(request):
         'students': students,
         'teachers': teachers,
         'current_stage': current_stage,
+        'start_date': start_date,
+        'end_date': end_date,
+        'today': today,
     })
 
 @login_required
@@ -719,15 +786,35 @@ def teacher_dashboard(request):
     """لوحة تحكم المعلم - عرض الإحصائيات"""
     # جلب طلاب المعلم
     students = Student.objects.filter(teacher=request.user, status='منتظم').order_by('full_name')
+
+    # فلترة التاريخ لعرض الإحصائيات في نطاق محدد
+    today = timezone.now().date()
+    start_date_str = (request.GET.get('start_date') or '').strip()
+    end_date_str = (request.GET.get('end_date') or '').strip()
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else None
+    except ValueError:
+        start_date = None
+
+    try:
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else None
+    except ValueError:
+        end_date = None
+
+    if start_date and end_date and start_date > end_date:
+        start_date, end_date = end_date, start_date
     
     # إحصائيات عامة
     total_students = students.count()
     
-    attendance_stats = {}
+    stats_rows = []
     for student in students:
-        attendances = Attendance.objects.filter(
-            student=student
-        )
+        attendances = Attendance.objects.filter(student=student)
+        if start_date:
+            attendances = attendances.filter(date__gte=start_date)
+        if end_date:
+            attendances = attendances.filter(date__lte=end_date)
         
         total_days = attendances.count()
         present = attendances.filter(status='حاضر').count()
@@ -742,7 +829,7 @@ def teacher_dashboard(request):
         # جميع الحضور مع الحالة
         all_attendance = list(attendances.values('date', 'status').order_by('-date'))
         
-        attendance_stats[student.id] = {
+        stats_rows.append((student.id, {
             'student': student,
             'total_days': total_days,
             'present': present,
@@ -752,11 +839,17 @@ def teacher_dashboard(request):
             'late': late,
             'non_present_count': non_present_count,
             'all_attendance': all_attendance
-        }
+        }))
+
+    stats_rows.sort(key=lambda item: (-item[1]['absent'], item[1]['student'].full_name or ''))
+    attendance_stats = {student_id: stats for student_id, stats in stats_rows}
     
     context = {
         'total_students': total_students,
         'attendance_stats': attendance_stats,
+        'start_date': start_date,
+        'end_date': end_date,
+        'today': today,
     }
     
     return render(request, 'teacher_dashboard.html', context)
@@ -1256,19 +1349,35 @@ def preparer_absent_contacts(request):
         target_date = timezone.now().date()
 
     default_templates = {
-        'absent': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع أيام غيابه حتى الآن: ({{{المجموع}}}) أيام.\nإدارة جامع الحمودي',
-        'absent_excused': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} بعذر اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات الغياب بعذر حتى الآن: ({{{المجموع}}}) يوم.\nإدارة جامع الحمودي',
-        'late': 'ولي الأمر المكرم، نحيطكم علماً بتأخر الابن {{{الاسم_الأول}}} عن حلقة اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات التأخير: ({{{المجموع}}}).\nإدارة جامع الحمودي',
-        'excused': 'ولي الأمر المكرم، نود إحاطتكم باستئذان الابن {{{الاسم_الأول}}} وخروجه قبل نهاية وقت الحلقة اليوم {{{اليوم}}}. مجموع مرات الاستئذان: ({{{المجموع}}}).\nإدارة جامع الحمودي',
+        'absent': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع أيام غيابه حتى الآن: ({{{المجموع}}}) أيام. للاستفسار: المعلم {{{اسم_المعلم}}} - {{{جوال_المعلم}}}.\nإدارة جامع الحمودي',
+        'absent_excused': 'ولي الأمر المكرم، نفيدكم بغياب الابن {{{الاسم_الأول}}} بعذر اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات الغياب بعذر حتى الآن: ({{{المجموع}}}) يوم. للاستفسار: المعلم {{{اسم_المعلم}}} - {{{جوال_المعلم}}}.\nإدارة جامع الحمودي',
+        'late': 'ولي الأمر المكرم، نحيطكم علماً بتأخر الابن {{{الاسم_الأول}}} عن حلقة اليوم {{{اليوم}}} {{{التاريخ}}}. مجموع مرات التأخير: ({{{المجموع}}}). للاستفسار: المعلم {{{اسم_المعلم}}} - {{{جوال_المعلم}}}.\nإدارة جامع الحمودي',
+        'excused': 'ولي الأمر المكرم، نود إحاطتكم بانصراف الابن {{{الاسم_الأول}}} وخروجه قبل نهاية وقت الحلقة اليوم {{{اليوم}}}. مجموع مرات الانصراف: ({{{المجموع}}}). للاستفسار: المعلم {{{اسم_المعلم}}} - {{{جوال_المعلم}}}.\nإدارة جامع الحمودي',
+    }
+
+    saved_templates = {
+        row.section: row.template_text
+        for row in SmsTemplateSetting.objects.filter(user=request.user)
     }
 
     current_templates = {
-        'absent': request.POST.get('absent_sms_template', default_templates['absent']),
-        'absent_excused': request.POST.get('absent_excused_sms_template', default_templates['absent_excused']),
-        'late': request.POST.get('late_sms_template', default_templates['late']),
-        'excused': request.POST.get('excused_sms_template', default_templates['excused']),
+        'absent': saved_templates.get('absent', default_templates['absent']),
+        'absent_excused': saved_templates.get('absent_excused', default_templates['absent_excused']),
+        'late': saved_templates.get('late', default_templates['late']),
+        'excused': saved_templates.get('excused', default_templates['excused']),
     }
 
+    posted_templates = {
+        'absent': request.POST.get('absent_sms_template'),
+        'absent_excused': request.POST.get('absent_excused_sms_template'),
+        'late': request.POST.get('late_sms_template'),
+        'excused': request.POST.get('excused_sms_template'),
+    }
+    for key, value in posted_templates.items():
+        if value is not None:
+            current_templates[key] = value
+
+    template_save_feedback = None
     if request.method == 'POST':
         reset_student_id = request.POST.get('reset_student_id')
         if reset_student_id:
@@ -1276,6 +1385,31 @@ def preparer_absent_contacts(request):
             student.absence_reset_at = timezone.now().date()
             student.save()
             return redirect(f"{reverse('preparer_absent_contacts')}?date={target_date}")
+
+        if request.POST.get('save_templates') == '1':
+            template_field_map = {
+                'absent': 'absent_sms_template',
+                'absent_excused': 'absent_excused_sms_template',
+                'late': 'late_sms_template',
+                'excused': 'excused_sms_template',
+            }
+            saved_count = 0
+            for section, field_name in template_field_map.items():
+                if field_name not in request.POST:
+                    continue
+                template_text = (request.POST.get(field_name) or '').strip()
+                if not template_text:
+                    template_text = default_templates[section]
+
+                SmsTemplateSetting.objects.update_or_create(
+                    user=request.user,
+                    section=section,
+                    defaults={'template_text': template_text},
+                )
+                current_templates[section] = template_text
+                saved_count += 1
+
+            template_save_feedback = f'تم حفظ القالب بنجاح ({saved_count}).'
 
     def collect_parent_phones_by_status(status_code):
         status_attendance = Attendance.objects.filter(date=target_date, status=status_code).select_related('student')
@@ -1307,7 +1441,7 @@ def preparer_absent_contacts(request):
     sms_feedback = None
     if request.method == 'POST':
         sms_action = request.POST.get('sms_action')
-        if sms_action in status_rows:
+        if sms_action in status_rows and request.POST.get('save_templates') != '1':
             batch_result = send_batch_messages(status_rows[sms_action], current_templates[sms_action])
             sms_feedback = {
                 'section': sms_action,
@@ -1321,7 +1455,7 @@ def preparer_absent_contacts(request):
             'absent': ('غائب', 'غياب'),
             'absent_excused': ('غياب بعذر', 'غياب_بعذر'),
             'late': ('متأخر', 'تأخر'),
-            'excused': ('مستأذن', 'استئذان'),
+            'excused': ('مستأذن', 'انصراف'),
         }
         status_code, status_label = status_map[download_type]
         rows = build_status_export_rows(target_date, status_code)
@@ -1368,6 +1502,7 @@ def preparer_absent_contacts(request):
         'late_sms_template': current_templates['late'],
         'excused_sms_template': current_templates['excused'],
         'sms_feedback': sms_feedback,
+        'template_save_feedback': template_save_feedback,
         'at_risk': at_risk,
     }
     return render(request, 'preparer_absent_contacts.html', context)

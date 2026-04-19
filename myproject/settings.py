@@ -57,6 +57,9 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# Allow same-origin iframes (used by student plan generator page).
+X_FRAME_OPTIONS = "SAMEORIGIN"
+
 ROOT_URLCONF = "myproject.urls"
 
 TEMPLATES = [
@@ -138,6 +141,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = 'teacher_dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
+
+# Persistent sessions: keep users logged in across browser restarts.
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 90  # 90 days
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_SAVE_EVERY_REQUEST = True
 
 # SMS API configuration (set these in environment variables on the server).
 SMS_API_URL = os.getenv('SMS_API_URL', 'https://api.oursms.com/msgs/sms')

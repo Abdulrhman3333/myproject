@@ -61,7 +61,7 @@
                     <button type="button"
                         class="btn {% if item.status == 'غائب' %}btn-danger{% elif item.status == 'غياب بعذر' %}btn-dark{% elif item.status == 'مستأذن' %}btn-warning{% elif item.status == 'متأخر' %}btn-secondary{% else %}btn-primary{% endif %}"
                         onclick="toggleStatus('{{ item.student.id }}')"
-                        id="btn_{{ item.student.id }}">{{ item.status }}</button>
+                        id="btn_{{ item.student.id }}">{% if item.status == 'مستأذن' %}منصرف{% else %}{{ item.status }}{% endif %}</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -135,7 +135,7 @@ function toggleStatus(id) {
         btn.className = 'btn btn-dark';
     } else if (input.value === 'غياب بعذر') {
         input.value = 'مستأذن';
-        btn.innerText = 'مستأذن';
+        btn.innerText = 'منصرف';
         btn.className = 'btn btn-warning';
     } else if (input.value === 'مستأذن') {
         input.value = 'متأخر';
