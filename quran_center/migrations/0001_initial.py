@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 (
                     "identity_number",
                     models.CharField(
-                        max_length=10, unique=True, verbose_name="رقم الهوية"
+                        max_length=10, unique=True, verbose_name="رقم هوية الطالب"
                     ),
                 ),
                 (
@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
                         blank=True,
                         max_length=100,
                         null=True,
-                        verbose_name="التحفيظ السابق",
+                        verbose_name="التحفيظ السابق ( ان وُجد )",
                     ),
                 ),
                 ("neighborhood", models.CharField(max_length=100, verbose_name="الحي")),

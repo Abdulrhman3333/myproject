@@ -735,7 +735,7 @@ def bulk_students_upload(request):
 
             if Student.objects.filter(identity_number=identity_number).exists():
                 skipped_count += 1
-                row_errors.append(f'السطر {row_number}: رقم الهوية {identity_number} موجود مسبقاً.')
+                row_errors.append(f'السطر {row_number}: رقم هوية الطالب {identity_number} موجود مسبقاً.')
                 continue
 
             grade_input = data.get('grade')
@@ -1043,7 +1043,7 @@ def nominated_students(request):
     if not user_has_role(request.user, 'examiner'):
         return redirect('home')
 
-    nominations = ExamNomination.objects.filter(internal_passed=False).select_related('student').order_by('student__full_name', '-id')
+    nominations = ExamNomination.objects.filter(internal_passed=False).select_related('student', 'teacher').order_by('student__full_name', '-id')
     
     if request.method == 'POST':
         for nomination in nominations:
@@ -1063,8 +1063,37 @@ def nominated_students(request):
             'nomination': nomination,
             'next_part': nomination.get_next_part()
         })
-    
-    return render(request, 'nominated_students.html', {'nominations': nominations_with_next})
+
+    # حساب MAE كقياس لثقة المعلم (كلما كان أقل كان التقدير أدق)
+    abs_errors = []
+    teacher_errors = {}
+    for nomination in nominations:
+        if nomination.teacher_grade is None or nomination.internal_grade is None:
+            continue
+
+        abs_error = abs(float(nomination.teacher_grade) - float(nomination.internal_grade))
+        abs_errors.append(abs_error)
+
+        teacher_name = nomination.teacher.get_full_name() or nomination.teacher.username
+        teacher_errors.setdefault(teacher_name, []).append(abs_error)
+
+    overall_mae = (sum(abs_errors) / len(abs_errors)) if abs_errors else None
+    teacher_mae = []
+    for teacher_name, errors in teacher_errors.items():
+        teacher_mae.append({
+            'teacher_name': teacher_name,
+            'mae': sum(errors) / len(errors),
+            'count': len(errors),
+        })
+
+    teacher_mae.sort(key=lambda item: item['mae'])
+
+    return render(request, 'nominated_students.html', {
+        'nominations': nominations_with_next,
+        'overall_mae': overall_mae,
+        'mae_count': len(abs_errors),
+        'teacher_mae': teacher_mae,
+    })
 
 
 @login_required

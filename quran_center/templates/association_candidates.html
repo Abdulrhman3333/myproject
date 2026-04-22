@@ -19,7 +19,7 @@
                 <thead class="table-dark">
                     <tr>
                         <th>اسم الطالب</th>
-                        <th>آخر جزء تم اختباره</th>
+                        <th>اسم المعلم</th>
                         <th>الجزء المراد اختباره</th>
                         <th>درجة المعلم</th>
                         <th>درجة الاختبار الداخلي</th>
@@ -30,7 +30,7 @@
                     {% for item in nominations %}
                     <tr>
                         <td>{{ item.nomination.student.full_name }}</td>
-                        <td><span class="badge bg-secondary">{{ item.nomination.get_last_tested_part_display }}</span></td>
+                        <td>{{ item.nomination.teacher.get_full_name|default:item.nomination.teacher.username }}</td>
                         <td><span class="badge bg-success">{{ item.next_part }}</span></td>
                         <td><span class="badge bg-info">{{ item.nomination.teacher_grade|floatformat:2 }}</span></td>
                         <td><span class="badge bg-info">{{ item.nomination.internal_grade|floatformat:2 }}</span></td>

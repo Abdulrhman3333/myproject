@@ -10,6 +10,7 @@
 </div>
 
 <div class="container" dir="rtl">
+
     
     {% if nominations %}
     <form method="post">
@@ -19,7 +20,7 @@
                 <thead class="table-dark">
                     <tr>
                         <th>اسم الطالب</th>
-                        <th>آخر جزء تم اختباره</th>
+                        <th>اسم المعلم</th>
                         <th>الجزء المراد اختباره</th>
                         <th>درجة المعلم</th>
                         <th>درجة الاختبار الداخلي</th>
@@ -29,7 +30,7 @@
                     {% for item in nominations %}
                     <tr>
                         <td>{{ item.nomination.student.full_name }}</td>
-                        <td><span class="badge bg-secondary">{{ item.nomination.get_last_tested_part_display }}</span></td>
+                        <td>{{ item.nomination.teacher.get_full_name|default:item.nomination.teacher.username }}</td>
                         <td><span class="badge bg-success">{{ item.next_part }}</span></td>
                         <td><span class="badge bg-info">{{ item.nomination.teacher_grade|floatformat:2 }}</span></td>
                         <td>
@@ -54,6 +55,49 @@
     {% else %}
     <div class="alert alert-info">
         لا يوجد مرشحون للاختبار حالياً.
+    </div>
+    {% endif %}
+
+        <div class="row g-3 mb-3">
+        <div class="col-md-6">
+            <div class="alert alert-primary mb-0">
+                <strong>MAE العام:</strong>
+                {% if overall_mae is not None %}
+                    {{ overall_mae|floatformat:2 }}
+                    <span class="text-muted">(عدد الحالات: {{ mae_count }})</span>
+                {% else %}
+                    لا توجد بيانات كافية للحساب بعد.
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="alert alert-light border mb-0">
+                <strong>تفسير المؤشر:</strong>
+                كلما انخفضت قيمة MAE كان تقدير المعلم أقرب لدرجة الاختبار الداخلي.
+            </div>
+        </div>
+    </div>
+
+    {% if teacher_mae %}
+    <div class="table-responsive mb-4">
+        <table class="table table-sm table-striped table-bordered">
+            <thead class="table-light">
+                <tr>
+                    <th>المعلم</th>
+                    <th>MAE</th>
+                    <th>عدد الحالات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in teacher_mae %}
+                <tr>
+                    <td>{{ item.teacher_name }}</td>
+                    <td>{{ item.mae|floatformat:2 }}</td>
+                    <td>{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
     {% endif %}
     

@@ -55,7 +55,7 @@ class UserRole(models.Model):
         return f"{self.user.username} - {self.role.name}"
 
 # تعريف قاعدة: يجب أن يكون الرقم 10 خانات
-id_validator = RegexValidator(regex=r'^\d{10}$', message="رقم الهوية غير صحيح")
+id_validator = RegexValidator(regex=r'^\d{10}$', message="رقم هوية الطالب غير صحيح")
 
 # نموذج مشرف المرحلة
 class StageSupervisor(models.Model):
@@ -97,7 +97,7 @@ class Student(models.Model):
     student_unique_id = models.PositiveIntegerField(unique=True, blank=True, null=True, editable=False, verbose_name="المعرف الفريد")
     student_phone = models.CharField(max_length=15, blank=True, null=True, verbose_name="جوال الطالب")
     parent_phone = models.CharField(max_length=15, verbose_name="جوال ولي الأمر", blank=True, default="")
-    identity_number = models.CharField(max_length=100, verbose_name="رقم الهوية", blank=True, null=True)
+    identity_number = models.CharField(max_length=100, verbose_name="رقم هوية الطالب", blank=True, null=True)
     jamiaa_id = models.CharField(max_length=100, verbose_name="رقم الجمعية", blank=True, null=True)
     parent_identity = models.CharField(max_length=50, verbose_name="رقم هوية ولي الأمر", blank=True, null=True)
     grade = models.CharField(max_length=20, choices=GRADE_CHOICES, verbose_name="الصف الدراسي", blank=True, default="")
@@ -108,7 +108,7 @@ class Student(models.Model):
         default='0',
         verbose_name="آخر جزء تم اختباره"
     )
-    previous_center = models.CharField(max_length=100, blank=True, null=True, verbose_name="التحفيظ السابق")
+    previous_center = models.CharField(max_length=100, blank=True, null=True, verbose_name="التحفيظ السابق ( ان وُجد )")
     neighborhood = models.CharField(max_length=100, verbose_name="الحي", blank=True, null=True)
     
     # حقول تلقائية
@@ -280,6 +280,7 @@ class TeacherProfile(models.Model):
     """ملف تعريفي للمعلم يحتوي على معلومات إضافية"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, verbose_name="المستخدم", related_name='teacher_profile')
     phone = models.CharField(max_length=15, verbose_name="رقم الجوال", blank=True, null=True)
+    halaqa_name = models.CharField(max_length=100, verbose_name="اسم الحلقة", blank=True, null=True)
     
     class Meta:
         verbose_name = "ملف المعلم"

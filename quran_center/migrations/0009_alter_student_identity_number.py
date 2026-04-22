@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
             model_name="student",
             name="identity_number",
             field=models.CharField(
-                blank=True, max_length=100, null=True, verbose_name="رقم الهوية"
+                blank=True, max_length=100, null=True, verbose_name="رقم هوية الطالب"
             ),
         ),
     ]

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Student, Attendance, StageSupervisor, AcademicCalendar, ExamNomination, Role, UserRole, TeacherPlanPreference
+from .models import Student, Attendance, StageSupervisor, AcademicCalendar, ExamNomination, Role, UserRole, TeacherPlanPreference, TeacherProfile
 
 @admin.register(StageSupervisor)
 class StageSupervisorAdmin(admin.ModelAdmin):
@@ -57,4 +57,10 @@ class AttendanceAdmin(admin.ModelAdmin):
 class TeacherPlanPreferenceAdmin(admin.ModelAdmin):
     list_display = ('user', 'mem_plan', 'big_review_pages', 'updated_at')
     search_fields = ('user__username',)
+
+
+@admin.register(TeacherProfile)
+class TeacherProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'halaqa_name', 'phone')
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'halaqa_name', 'phone')
 
